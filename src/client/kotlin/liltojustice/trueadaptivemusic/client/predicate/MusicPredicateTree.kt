@@ -1,5 +1,6 @@
 package liltojustice.trueadaptivemusic.client.predicate
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import liltojustice.trueadaptivemusic.LogLevel
 import liltojustice.trueadaptivemusic.Logger
@@ -12,11 +13,82 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.InvalidIdentifierException
 import net.minecraft.util.JsonHelper
 
-class MusicPredicateTree private constructor(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>) {
-    private class Node private constructor(
-        private val predicate: MusicPredicate,
-        private val playableSounds: List<PlayableSound>,
-        private val children: List<Node> = listOf()) {
+typealias NodeVisitor = (MusicPredicateTree.Node, Int) -> Unit
+
+class MusicPredicateTree private constructor(
+    json: JsonObject? = null, private val soundLibrary: Map<String, PlayableSoundFile> = mapOf()) {
+    private val root = if (json != null) Node.fromJson(json, soundLibrary) else Node.makeRoot()
+
+    fun copy(): MusicPredicateTree {
+        return MusicPredicateTree(toJson(), soundLibrary.toMap())
+    }
+
+    fun toJson(): JsonObject {
+        return root.toJson()
+    }
+
+    fun getMusicToPlay(client: MinecraftClient): Result {
+        val bottomSatisfied = root.getBottomSatisfied(client)
+        return Result(bottomSatisfied.first, bottomSatisfied.second.joinToString("/"))
+    }
+
+    private fun traverseRecursive(
+        root: Node, preorderVisitor: NodeVisitor? = null, postorderVisitor: NodeVisitor? = null, depth: Int = 0) {
+        preorderVisitor?.invoke(root, depth)
+        root.children.forEach { node -> traverseRecursive(node, preorderVisitor, postorderVisitor, depth + 1)}
+        postorderVisitor?.invoke(root, depth)
+    }
+
+    fun traverse(preorderVisitor: NodeVisitor? = null, postorderVisitor: NodeVisitor? = null) {
+        traverseRecursive(root, preorderVisitor, postorderVisitor)
+    }
+
+    fun preorderTraverse(preorderVisitor: NodeVisitor) {
+        traverseRecursive(root, preorderVisitor = preorderVisitor)
+    }
+
+    fun postorderTraverse(postorderVisitor: NodeVisitor) {
+        traverseRecursive(root, postorderVisitor = postorderVisitor)
+    }
+
+    companion object {
+        fun makeEmpty(): MusicPredicateTree {
+            return MusicPredicateTree()
+        }
+
+        fun fromJson(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>): MusicPredicateTree {
+            try {
+                return MusicPredicateTree(json, soundLibrary)
+            } catch (e: Exception) {
+                throw RulesParserException("Failed to parse rules.", e)
+            }
+        }
+    }
+
+    class Node private constructor(
+        var predicate: MusicPredicate,
+        var playableSounds: List<PlayableSound>,
+        val children: MutableList<Node> = mutableListOf()
+    ) {
+        var parent: Node? = null
+            get() = field
+            private set
+
+        init {
+            children.forEach { child -> child.parent = this }
+        }
+
+        fun toJson(): JsonObject {
+            val result = predicate.toJson()
+            val jsonMusicPath = JsonArray(playableSounds.size)
+            playableSounds.forEach { sound -> jsonMusicPath.add(sound.getSoundName()) }
+            val jsonChildren = JsonArray(children.size)
+            children.forEach { child -> jsonChildren.add(child.toJson()) }
+            result.add("musicPath", jsonMusicPath)
+            result.add("children", jsonChildren)
+
+            return result
+        }
 
         fun getBottomSatisfied(client: MinecraftClient, path: List<String> = listOf()): Pair<List<PlayableSound>, List<String>> {
             if (!predicate.test(client))
@@ -39,7 +111,17 @@ class MusicPredicateTree private constructor(json: JsonObject, soundLibrary: Map
             return bottoms.maxBy { bottom -> bottom.second.size }
         }
 
+        fun newChild(predicateType: String, vararg args: Any, sounds: List<PlayableSound>) {
+            val child = Node(MusicPredicate.initializeFromArgs(predicateType, *args), sounds)
+            child.parent = this
+            children.add(child)
+        }
+
         companion object {
+            fun makeRoot(): Node {
+                return Node(RootPredicate(), listOf())
+            }
+
             fun fromJson(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>): Node {
                 val pred = MusicPredicate.fromJson(json)
                 return Node(
@@ -50,48 +132,31 @@ class MusicPredicateTree private constructor(json: JsonObject, soundLibrary: Map
             }
 
             private fun parseMusicPath(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>)
-            : List<PlayableSound> {
-                 return (if (JsonHelper.hasString(json, "musicPath"))
+                    : List<PlayableSound> {
+                return (if (JsonHelper.hasString(json, "musicPath"))
                     listOf(JsonHelper.getString(json, "musicPath"))
                 else
                     JsonHelper.getArray(json, "musicPath").map { element -> element.asString })
-                     .map { path ->
-                         try {
-                             return@map soundLibrary[path]
-                                 ?: PlayableSoundEvent(Registries.SOUND_EVENT[Identifier(path)]
-                                 ?: throw InvalidIdentifierException("Couldn't find sound event for $path"))
-                         } catch (_: InvalidIdentifierException) {}
+                    .map { path ->
+                        try {
+                            return@map soundLibrary[path]
+                                ?: PlayableSoundEvent(Registries.SOUND_EVENT[Identifier(path)]
+                                    ?: throw InvalidIdentifierException("Couldn't find sound event for $path"))
+                        } catch (_: InvalidIdentifierException) {}
 
-                         Logger.log("Could not find \"$path\", skipping...", LogLevel.WARNING)
-                         return@map null
-                 }.filterNotNull()
+                        Logger.log("Could not find \"$path\", skipping...", LogLevel.WARNING)
+                        return@map null
+                    }.filterNotNull()
             }
 
-            private fun parseChildren(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>): List<Node> {
+            private fun parseChildren(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>): MutableList<Node> {
                 return if (JsonHelper.hasArray(json, "children"))
                     JsonHelper.getArray(json, "children")
-                        .map { child -> fromJson(child.asJsonObject, soundLibrary) }.toList()
-                else listOf()
+                        .map { child -> fromJson(child.asJsonObject, soundLibrary) }.toMutableList()
+                else mutableListOf()
             }
         }
     }
 
     class Result(val playableSounds: List<PlayableSound>, val path: String)
-
-    private val root = Node.fromJson(json, soundLibrary)
-
-    fun getMusicToPlay(client: MinecraftClient): Result {
-        val bottomSatisfied = root.getBottomSatisfied(client)
-        return Result(bottomSatisfied.first, bottomSatisfied.second.joinToString("/"))
-    }
-
-    companion object {
-        fun fromJson(json: JsonObject, soundLibrary: Map<String, PlayableSoundFile>): MusicPredicateTree {
-            try {
-                return MusicPredicateTree(json, soundLibrary)
-            } catch (e: Exception) {
-                throw RulesParserException("Failed to parse rules. Inner exception:\n${e.message}")
-            }
-        }
-    }
 }

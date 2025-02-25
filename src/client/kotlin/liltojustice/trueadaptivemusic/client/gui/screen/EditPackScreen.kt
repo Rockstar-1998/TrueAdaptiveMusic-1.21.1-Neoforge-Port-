@@ -1,51 +1,71 @@
 package liltojustice.trueadaptivemusic.client.gui.screen
 
-import liltojustice.trueadaptivemusic.Logger
-import liltojustice.trueadaptivemusic.client.gui.widget.PackStructureWidget
+import liltojustice.trueadaptivemusic.client.ChangeMusicPackCallback
+import liltojustice.trueadaptivemusic.client.MusicPack
+import liltojustice.trueadaptivemusic.client.gui.widget.PredicateTreeWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.PredicateViewWidget
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ClickableWidget
-import net.minecraft.client.gui.widget.GridWidget
-import net.minecraft.client.gui.widget.IconButtonWidget
-import net.minecraft.client.gui.widget.SimplePositioningWidget
+import net.minecraft.client.gui.widget.*
 import net.minecraft.text.Text
+import net.minecraft.util.Colors
 import net.minecraft.util.Identifier
+import net.minecraft.util.Util
 
 @Environment(EnvType.CLIENT)
-class EditPackScreen(private val parent: Screen): Screen(Text.literal("Create/Edit a music pack")) {
+class EditPackScreen(
+    private val parent: Screen,
+    private val musicPack: MusicPack)
+    : Screen(Text.literal("Create/Edit a music pack")) {
     override fun init() {
-        val saveButtonWidget = IconButtonWidget.Builder(Text.literal("Save"), CHECKMARK)
-        { Logger.log("Save pack clicked") }
+        musicPack.initEdit(musicPack)
+
+        val saveButtonWidget = IconButtonWidget.Builder(Text.literal("Save"), CHECKMARK) {
+            val path = musicPack.save()
+            ChangeMusicPackCallback.EVENT.invoker().selectPack(MusicPack.fromFile(path))
+            this.close()
+        }
             .iconSize(9, 8)
             .textureSize(9, 8)
             .xyOffset(13, 6)
             .build()
         saveButtonWidget.width = 50
 
+        val openAssetsFolderButtonWidget = ButtonWidget.Builder(OPEN_ASSETS_TEXT) {
+            Util.getOperatingSystem().open(musicPack.getEditPackAssetsPath().toUri())
+        }
+            .build()
+        openAssetsFolderButtonWidget.width = textRenderer.getWidth(OPEN_ASSETS_TEXT) + 10
+        openAssetsFolderButtonWidget.x = width - openAssetsFolderButtonWidget.width
+
         val gridWidget = GridWidget()
         gridWidget.mainPositioner
             .marginLeft(LEFT_MARGIN / 2)
             .marginRight(RIGHT_MARGIN / 2)
         val adder: GridWidget.Adder? = gridWidget.createAdder(3)
-        val packStructureWidget = PackStructureWidget(
-            width = (width * 0.66f - LEFT_MARGIN - RIGHT_MARGIN).toInt(),
-            height = (height - TOP_MARGIN - BOTTOM_MARGIN),
-            true)
+
+        lateinit var predicateTreeWidget: PredicateTreeWidget
         val predicateViewWidget = PredicateViewWidget(
-            width = (width * 0.33 - LEFT_MARGIN - RIGHT_MARGIN).toInt(),
-            height = (height - TOP_MARGIN - BOTTOM_MARGIN),
-            true)
-        packStructureWidget.onSelectPredicate { predicate -> predicateViewWidget.setPredicate(predicate) }
-        adder?.add(packStructureWidget, 2)
+            (width * 0.5 - LEFT_MARGIN - RIGHT_MARGIN).toInt(),
+            (height - TOP_MARGIN - BOTTOM_MARGIN),
+            musicPack,
+            { predicateTreeWidget.initPredicateWidgets() })
+        predicateTreeWidget = PredicateTreeWidget(
+            (width * 0.5 - LEFT_MARGIN - RIGHT_MARGIN).toInt(),
+            (height - TOP_MARGIN - BOTTOM_MARGIN),
+            musicPack,
+            { node -> predicateViewWidget.setEditExistingNode(node) },
+            { parent -> predicateViewWidget.setCreateNewNode(parent) })
+        adder?.add(predicateTreeWidget, 2)
         adder?.add(predicateViewWidget, 1)
 
         gridWidget.refreshPositions()
         SimplePositioningWidget.setPos(
             gridWidget, LEFT_MARGIN, TOP_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, 0f, 0f)
         addDrawableChild(saveButtonWidget)
+        addDrawableChild(openAssetsFolderButtonWidget)
         gridWidget.forEachChild { drawableElement: ClickableWidget? ->
             this.addDrawableChild(
                 drawableElement
@@ -59,7 +79,7 @@ class EditPackScreen(private val parent: Screen): Screen(Text.literal("Create/Ed
 
     override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
         renderBackground(context)
-        context?.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 12, 16777215)
+        context?.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 12, Colors.WHITE)
         super.render(context, mouseX, mouseY, delta)
     }
 
@@ -69,5 +89,6 @@ class EditPackScreen(private val parent: Screen): Screen(Text.literal("Create/Ed
         private const val BOTTOM_MARGIN = TOP_MARGIN / 4
         private const val LEFT_MARGIN = TOP_MARGIN / 4
         private const val RIGHT_MARGIN = LEFT_MARGIN
+        private val OPEN_ASSETS_TEXT = Text.literal("Show Assets")
     }
 }

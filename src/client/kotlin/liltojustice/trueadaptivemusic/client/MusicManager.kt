@@ -35,6 +35,10 @@ class MusicManager(
         this.musicPack = musicPack
     }
 
+    fun getMusicPack(): MusicPack? {
+        return musicPack
+    }
+
     fun tick() {
         if (toStop != null) {
             client.soundManager.stop(toStop)
@@ -89,15 +93,9 @@ class MusicManager(
     }
 
     private fun stop() {
-        if (soundInstance != null)
-        {
-            client.soundManager.stop(soundInstance)
-            client.soundManager.stop(oldSoundInstance)
-            fadeInstances.forEach { fadeInstance -> client.soundManager.stop(fadeInstance.soundInstance) }
-            fadeInstances.clear()
-            soundInstance = null
-            oldSoundInstance = null
-        }
+        client.soundManager.stopAll()
+        soundInstance = null
+        oldSoundInstance = null
     }
 
     private fun beginCrossfade(newSoundInstance: SoundInstance) {
