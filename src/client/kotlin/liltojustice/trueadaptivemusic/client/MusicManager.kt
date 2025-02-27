@@ -30,7 +30,7 @@ class MusicManager(
         }
     }
 
-    fun selectMusicPack(musicPack: MusicPack) {
+    fun selectMusicPack(musicPack: MusicPack?) {
         stop()
         this.musicPack = musicPack
     }
@@ -94,6 +94,7 @@ class MusicManager(
 
     private fun stop() {
         client.soundManager.stopAll()
+        client.soundManager.close()
         soundInstance = null
         oldSoundInstance = null
     }
