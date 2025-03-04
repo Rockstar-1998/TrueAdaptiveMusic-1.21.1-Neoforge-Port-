@@ -49,7 +49,7 @@ class PredicateViewWidget(
         }
 
         if (newPredicateParent != null || selectedNode != null) {
-            renderEditMode(context)
+            renderEditMode()
         }
         else {
             drawCenteredText(
@@ -75,6 +75,7 @@ class PredicateViewWidget(
         selectedNode = node
         newPredicateParent = null
         movingNode = null
+        resetScrolling()
     }
 
     fun setCreateNewNode(parent: MusicPredicateTree.Node) {
@@ -95,6 +96,7 @@ class PredicateViewWidget(
         movingNode = null
         requiredArgs = listOf()
         args = mutableListOf()
+        resetScrolling()
     }
 
     private fun setSelectedPredicateTypeName(typeName: String) {
@@ -109,12 +111,7 @@ class PredicateViewWidget(
         clearWidgetsFromRender { childWidget -> childWidget.id in arrayOf("predicateTypeChoice", "musicChoice") }
     }
 
-    private fun renderEditMode(context: DrawContext?) {
-        drawCenteredText(
-            context,
-            if (selectedNode != null) "Edit Prediate" else "New Predicate",
-            0,
-            width / 2)
+    private fun renderEditMode() {
         if (selectedNode?.predicate?.getTypeName() != RootPredicate.getTypeName()) {
             addWidgetFromRender(
                 {

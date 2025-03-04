@@ -109,12 +109,10 @@ abstract class ContainerWidget(
         children.forEach { (_, child) ->
             if (child.widget.isMouseOver(mouseX, mouseY)) {
                 child.widget.mouseScrolled(mouseX, mouseY, amount)
-                if (translucentInteract)
+                if (child.widget is ContainerWidget && child.widget.shouldBlockScroll(mouseX, mouseY))
                 {
-                    return@forEach
+                    return@mouseScrolled isMouseOver(mouseX, mouseY)
                 }
-
-                return@mouseScrolled true
             }
         }
 
@@ -123,7 +121,6 @@ abstract class ContainerWidget(
         }
 
         scrollPosition -= amount.toInt()
-        clampScrollPosition()
 
         return true
     }
@@ -172,7 +169,7 @@ abstract class ContainerWidget(
         }
 
         if (row == null) {
-            children[widgetId] = children[widgetId]!!.copy(row = maxUsedRow(true) + 1)
+            children[widgetId] = children[widgetId]!!.copy(row = maxUsedRow(true, true) + 1)
         }
 
         renderChildren[widgetId] = children[widgetId]!!.copy()
@@ -246,8 +243,12 @@ abstract class ContainerWidget(
         fitToChildrenWidth()
     }
 
+    fun resetScrolling() {
+        scrollPosition = 0
+    }
+
     private fun clampScrollPosition() {
-        scrollPosition = min(scrollPosition, (maxUsedRow(countOffscreen = true) + 1) - totalRows())
+        scrollPosition = min(scrollPosition, maxUsedRow(countOffscreen = true) + 1 - totalRows())
         scrollPosition = max(0, scrollPosition)
     }
 
@@ -292,6 +293,12 @@ abstract class ContainerWidget(
 
     private fun childVisible(translated: ChildWidget): Boolean {
         return translated.widget.visible && translated.row >= 0 && translated.row < totalRows()
+    }
+
+    private fun shouldBlockScroll(mouseX: Double, mouseY: Double): Boolean {
+        return (!translucentInteract && visible && active && isMouseOver(mouseX, mouseY))
+                || children.any { (_, child) ->
+                    child.widget is ContainerWidget && child.widget.shouldBlockScroll(mouseX, mouseY) }
     }
 
     companion object {
