@@ -1,32 +1,58 @@
-package liltojustice.trueadaptivemusic.client.predicate
+package liltojustice.trueadaptivemusic.client.predicate.types
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import liltojustice.trueadaptivemusic.client.predicate.MusicPredicateException
+import liltojustice.trueadaptivemusic.client.predicate.PredicateParam
 import net.minecraft.client.MinecraftClient
 import net.minecraft.util.JsonHelper
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.*
+import kotlin.reflect.jvm.isAccessible
 
 sealed class MusicPredicate {
     abstract fun test(client: MinecraftClient): Boolean
-    abstract fun getIDs(): List<String>
 
-    fun toJson(): JsonObject {
+    fun getPredicateParams(): List<PredicateParam> {
+        val constructor = this::class.primaryConstructor
+            ?: throw MusicPredicateException("No constructor found for ${this::class.simpleName}." +
+                    " It must have a constructor.")
+        val result = this::class.declaredMemberProperties
+            .filter { property -> constructor.parameters.any { param -> property.name == param.name } }
+            .map { property ->
+                val accessible = property.isAccessible
+                property.isAccessible = true
+                val value = property.getter.call(this)
+                property.isAccessible = accessible
+                PredicateParam(property.name, value)
+            }
+
+        if (result.size < constructor.parameters.size) {
+            throw MusicPredicateException("Couldn't read all expected parameters for ${this::class.simpleName}." +
+                    " Make sure all arguments to its primary constructor are declared properties.")
+        }
+
+        return result
+    }
+
+    open fun toJson(): JsonObject {
         val result = JsonObject()
         result.add("type", JsonPrimitive(getTypeName()))
-        result.add("id", JsonPrimitive(getIDs().firstOrNull() ?: ""))
 
         return result
     }
 
     fun getPredicateId(): String {
         val companion = javaClass.kotlin.companionObjectInstance
-        if (companion is MusicPredicateCompanion<*>)
-        {
-            return "${companion.getTypeName()}{${getIDs().joinToString(",")}}"
-        } else throw MusicPredicateException("Failed to find valid companion object for $javaClass make sure to" +
-                " create one that inherits from MusicPredicateCompanion")
+        if (companion is MusicPredicateCompanion<*>) {
+            val params = getPredicateParams()
+            return companion.getTypeName() + if (params.isEmpty()) "" else "{${params.joinToString(",")}}"
+        }
+        else {
+            throw MusicPredicateException("Failed to find valid companion object for $javaClass make sure to" +
+                    " create one that inherits from ${MusicPredicateCompanion::class.simpleName}")
+        }
     }
 
     fun getTypeName(): String {
@@ -70,20 +96,19 @@ sealed class MusicPredicate {
         }
 
         fun getRequiredArgsFromTypeName(typeName: String): List<KParameter> {
-            return getConstructorFromTypeName(typeName)?.parameters
-                ?: throw MusicPredicateException("Failed to get type parameters for constructing $typeName.")
+            return getConstructorFromTypeName(typeName).parameters
         }
 
         fun initializeFromArgs(typeName: String, vararg args: Any): MusicPredicate {
-            return getConstructorFromTypeName(typeName)?.call(*args)
-                ?: throw MusicPredicateException("Initialization of MusicPredicate type $typeName failed.")
+            return getConstructorFromTypeName(typeName).call(*args)
         }
 
-        private fun getConstructorFromTypeName(typeName: String): KFunction<MusicPredicate>? {
+        private fun getConstructorFromTypeName(typeName: String): KFunction<MusicPredicate> {
             return MusicPredicate::class.sealedSubclasses.firstOrNull { subclass ->
                 subclass.companionObject?.functions?.firstOrNull { f ->
                     f.name == "getTypeName" }?.call(subclass.companionObjectInstance) == typeName }
                 ?.primaryConstructor
+                ?: throw MusicPredicateException("No constructor found for $typeName. It must have a constructor.")
         }
     }
 

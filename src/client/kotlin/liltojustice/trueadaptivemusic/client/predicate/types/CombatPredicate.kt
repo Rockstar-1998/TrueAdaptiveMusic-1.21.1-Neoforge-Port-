@@ -1,4 +1,4 @@
-package liltojustice.trueadaptivemusic.client.predicate
+package liltojustice.trueadaptivemusic.client.predicate.types
 
 import com.google.gson.JsonObject
 import net.minecraft.client.MinecraftClient
@@ -52,8 +52,6 @@ class CombatPredicate: MusicPredicate() {
 
         return false
     }
-
-    override fun getIDs(): List<String> { return listOf() }
 
     companion object: MusicPredicateCompanion<CombatPredicate> {
         override fun getTypeName(): String { return "combat" }

@@ -1,11 +1,10 @@
-package liltojustice.trueadaptivemusic.client.predicate
+package liltojustice.trueadaptivemusic.client.predicate.types
 
 import com.google.gson.JsonObject
 import net.minecraft.client.MinecraftClient
 
 class RootPredicate(): MusicPredicate() {
     override fun test(client: MinecraftClient): Boolean { return true }
-    override fun getIDs(): List<String> { return listOf() }
 
     companion object: MusicPredicateCompanion<RootPredicate> {
         override fun getTypeName(): String { return "root" }

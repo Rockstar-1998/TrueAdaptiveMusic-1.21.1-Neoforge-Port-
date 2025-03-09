@@ -1,4 +1,4 @@
-package liltojustice.trueadaptivemusic.client.predicate
+package liltojustice.trueadaptivemusic.client.predicate.types
 
 import com.google.gson.JsonObject
 import net.minecraft.client.MinecraftClient
@@ -10,8 +10,6 @@ class NightTimePredicate: MusicPredicate() {
 
         return time in 13000..23999
     }
-
-    override fun getIDs(): List<String> { return emptyList() }  // return immutable list, won't be using this
 
     companion object: MusicPredicateCompanion<NightTimePredicate>
     {
