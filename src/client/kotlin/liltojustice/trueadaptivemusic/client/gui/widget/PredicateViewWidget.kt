@@ -246,22 +246,63 @@ class PredicateViewWidget(
     }
 
     private fun widgetMaker(arg: KParameter): ClickableWidget {
-        return if (arg.type.isSubtypeOf(typeOf<TypedIdentifier>())) {
+        val prompt = (arg.name ?: "Unknown") + ": ${arg.type.toString().split('.').last()}"
+        return if (arg.type == typeOf<Int>()) {
+            val input = TextInputWidget(
+                screen!!,
+                prompt,
+                30,
+                { widget, text ->
+                    if (text == "0-") {
+                        widget.text = "-0"
+                        return@TextInputWidget
+                    }
+
+                    val value = text.toIntOrNull()
+                    if (text != "-0" && value == null) {
+                        widget.text = "0"
+                        return@TextInputWidget
+                    }
+
+                    if (text != "-0" && text != value.toString()) {
+                        widget.text = value.toString()
+                        return@TextInputWidget
+                    }
+
+                    args[arg.index] = text.toIntOrNull()
+                },
+                args[arg.index]?.toString() ?: ""
+            )
+
+            input
+        }
+        else if (arg.type == typeOf<Boolean>()) {
+            val input = CheckboxWidget(
+                10,
+                prompt,
+                { checked -> args[arg.index] = checked },
+                checked = args[arg.index] as? Boolean ?: false)
+
+            input
+        }
+        else if (arg.type.isSubtypeOf(typeOf<TypedIdentifier>())) {
             val options = TypedIdentifier.getRegistryIdsFromType(arg.type).map { id -> id.toString() }.sorted()
-            return if (options.isEmpty())
+
+            if (options.isEmpty())
                 EmptyClickableWidget()
             else
                 DropdownWidget(
                     options,
                     { id -> args[arg.index] = TypedIdentifier.initializeFromIdString(arg.type, id) },
-                    (arg.name ?: "Unknown") + ": ${arg.type.toString().split('.').last()}",
+                    prompt,
                     startingOption = (args[arg.index] as? TypedIdentifier)?.toString() ?: "")
         }
         else if (isTypedIdentifierList(arg.type)) {
             val type = arg.type.arguments.firstOrNull()?.type
                 ?: throw Exception("Somehow List didn't have any type args. The world is chaos.")
             val options = TypedIdentifier.getRegistryIdsFromType(type).map { id -> id.toString() }.sorted()
-            return if (options.isEmpty())
+
+            if (options.isEmpty())
                 EmptyClickableWidget()
             else
                 MultiSelectDropdownWidget(
@@ -269,7 +310,7 @@ class PredicateViewWidget(
                     { selected -> args[arg.index] = selected
                         .map { id -> TypedIdentifier.initializeFromIdString(type, id) }
                         .ifEmpty { null } },
-                    (arg.name ?: "Unknown") + ": ${type.toString().split('.').last()}s",
+                    "${prompt}s",
                     notSelectedPlaceholder = "Select an Identifier",
                     alreadySelected = (args[arg.index] as? List<*>)?.map { id -> id.toString() } ?: listOf())
         }
