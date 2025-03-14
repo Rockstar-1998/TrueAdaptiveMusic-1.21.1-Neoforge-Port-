@@ -18,7 +18,7 @@ import net.minecraft.util.JsonHelper
 typealias NodeVisitor = (MusicPredicateTree.Node, Int) -> Unit
 
 class MusicPredicateTree private constructor(
-    json: JsonObject? = null, private val soundLibrary: Map<String, PlayableSoundFile> = mapOf()) {
+    json: JsonObject? = null, soundLibrary: Map<String, PlayableSoundFile> = mapOf()) {
     private val root = if (json != null) Node.fromJson(json, soundLibrary) else Node.makeRoot()
 
     fun toJson(): JsonObject {
