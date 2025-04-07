@@ -4,7 +4,9 @@ import liltojustice.trueadaptivemusic.client.Callbacks
 import liltojustice.trueadaptivemusic.client.MusicPack
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.client.gui.widget.AlwaysSelectedEntryListWidget
+import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.text.Text
 import net.minecraft.util.Colors
 
@@ -34,6 +36,16 @@ class PackListWidget(client: MinecraftClient, width: Int, height: Int, top: Int,
         private val client: MinecraftClient,
         private val musicPack: MusicPack? = null)
         : AlwaysSelectedEntryListWidget.Entry<Entry>() {
+        private val validation = musicPack?.validate() ?: emptyList()
+        private val issuesButton =
+            if (validation.isEmpty())
+                null
+            else
+                ButtonWidget.Builder(issuesText) {}
+                .tooltip(Tooltip.of(Text.literal(validation.joinToString { message -> "$message\n" })))
+                .width(client.textRenderer.getWidth(issuesText) + 5)
+                .build()
+
         override fun render(
             context: DrawContext?,
             index: Int,
@@ -55,6 +67,12 @@ class PackListWidget(client: MinecraftClient, width: Int, height: Int, top: Int,
                     x + 3, y + 14 + 3,
                     Colors.GRAY,
                     false)
+
+                issuesButton?.let {
+                    issuesButton.x = x + entryWidth - issuesButton.width - 5
+                    issuesButton.y = y + entryHeight - issuesButton.height - 5
+                    issuesButton.render(context, mouseX, mouseY, tickDelta)
+                }
             }
 
             if (musicPack == null) {
@@ -81,6 +99,10 @@ class PackListWidget(client: MinecraftClient, width: Int, height: Int, top: Int,
 
         override fun getNarration(): Text {
             return Text.empty()
+        }
+
+        companion object {
+            private val issuesText = Text.literal("Issues Found")
         }
     }
 }
