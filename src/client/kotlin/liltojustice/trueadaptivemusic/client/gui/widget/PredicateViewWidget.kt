@@ -1,12 +1,12 @@
 package liltojustice.trueadaptivemusic.client.gui.widget
 
-import liltojustice.trueadaptivemusic.client.Callbacks
 import liltojustice.trueadaptivemusic.client.MusicPack
-import liltojustice.trueadaptivemusic.client.event.types.MusicEvent
+import liltojustice.trueadaptivemusic.client.TrueAdaptiveMusicClient
+import liltojustice.trueadaptivemusic.client.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.predicate.MusicPredicateTree
 import liltojustice.trueadaptivemusic.client.predicate.types.RootPredicate
 import liltojustice.trueadaptivemusic.client.identifier.TypedIdentifier
-import liltojustice.trueadaptivemusic.client.predicate.types.MusicPredicate
+import liltojustice.trueadaptivemusic.client.predicate.MusicPredicate
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 import net.minecraft.client.gui.tooltip.Tooltip
@@ -164,14 +164,15 @@ class PredicateViewWidget(
                     },
                     "Select a track",
                     selectedMusicPaths,
-                    onHoverOption = { option -> Callbacks.playSoundNow(option.let { MusicPack.toPlayableSound(assets, it) }) })
+                    onHoverOption = { option ->
+                        TrueAdaptiveMusicClient.playSoundNow(option.let { MusicPack.toPlayableSound(assets, it) }) })
             },
             "musicChoice"
         )
 
         if (isMouseOver(mouseX.toDouble(), mouseY.toDouble())
             && !musicDropdownWidget.isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
-            Callbacks.playSoundNow(null)
+            TrueAdaptiveMusicClient.playSoundNow(null)
         }
 
         requiredPredicateArgs.forEach { arg ->
