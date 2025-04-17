@@ -1,8 +1,7 @@
 package liltojustice.trueadaptivemusic.client.gui.screen
 
 import liltojustice.trueadaptivemusic.Constants
-import liltojustice.trueadaptivemusic.client.ChangeMusicPackCallback
-import liltojustice.trueadaptivemusic.client.TrueAdaptiveMusicClient
+import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.gui.widget.PackListWidget
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
@@ -11,7 +10,6 @@ import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.screen.ScreenTexts
 import net.minecraft.text.Text
-import net.minecraft.util.ActionResult
 import net.minecraft.util.Util
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -28,14 +26,10 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
     private lateinit var editButton: ButtonWidget
     private lateinit var refreshButton: ButtonWidget
     private lateinit var wikiButton: ButtonWidget
+    private lateinit var optionsButton: ButtonWidget
 
     override fun init() {
-        TrueAdaptiveMusicClient.playSoundNow(null)
-
-        ChangeMusicPackCallback.EVENT.register { musicPack ->
-            editButton.visible = musicPack != null
-            return@register ActionResult.PASS
-        }
+        TAMClient.playSoundNow(null)
 
         createNewPackButton = ButtonWidget.Builder(CREATE_PACK_TEXT)
         {
@@ -46,58 +40,57 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
             }
 
             client?.setScreen(PackNameScreen(this))
-        }
-            .build()
+        }.build()
         createNewPackButton.width = textRenderer.getWidth(CREATE_PACK_TEXT) + 10
 
         openMusicPacksButton = ButtonWidget.Builder(OPEN_MUSIC_PACKS_TEXT) {
             Util.getOperatingSystem().open(Path(Constants.MUSIC_PACK_DIR).toUri())
-        }
-            .build()
+        }.build()
         openMusicPacksButton.width = textRenderer.getWidth(OPEN_MUSIC_PACKS_TEXT) + 10
         openMusicPacksButton.x = width - openMusicPacksButton.width
 
-        packListWidget = PackListWidget(
-            client!!, this.width, this.height, 48, this.height - 64, 36)
+        packListWidget = PackListWidget(client!!, this.width, this.height, 48, this.height - 64, 36)
+        { musicPack ->
+            TAMClient.musicPack = musicPack
+            editButton.visible = musicPack != null
+        }
 
-        doneButton = ButtonWidget.builder(ScreenTexts.DONE) { _: ButtonWidget? -> client?.setScreen(parent) }
-            .build()
+        doneButton = ButtonWidget.builder(ScreenTexts.DONE) { _: ButtonWidget? -> client?.setScreen(parent) }.build()
         doneButton.width = textRenderer.getWidth(ScreenTexts.DONE) + 10
         doneButton.x = width - doneButton.width
         doneButton.y = height - doneButton.height
 
         editButton = ButtonWidget.Builder(EDIT_TEXT)
         {
-            val currentPack = TrueAdaptiveMusicClient.getCurrentMusicPack()
+            val currentPack = TAMClient.musicPack
             val ongoingEdit = getOngoingEdit()
             val editScreen = EditPackScreen(this, currentPack ?: return@Builder)
             if (ongoingEdit != null && ongoingEdit.name != currentPack.packName) {
-                client?.setScreen(
-                    ConfirmBackupScreen(
-                        this,
-                        ongoingEdit,
-                        editScreen))
+                client?.setScreen(ConfirmBackupScreen(this, ongoingEdit, editScreen))
                 return@Builder
             }
 
             client?.setScreen(editScreen)
-        }
-            .build()
+        }.build()
         editButton.width = textRenderer.getWidth(EDIT_TEXT) + 10
         editButton.y = height - editButton.height
-        editButton.visible = TrueAdaptiveMusicClient.getCurrentMusicPack() != null
+        editButton.visible = TAMClient.musicPack != null
 
-        refreshButton = ButtonWidget.builder(REFRESH_TEXT) { _: ButtonWidget? -> reload() }
-            .build()
+        refreshButton = ButtonWidget.builder(REFRESH_TEXT) { _: ButtonWidget? -> reload() }.build()
         refreshButton.y = createNewPackButton.y + createNewPackButton.height + 5
         refreshButton.width = textRenderer.getWidth(REFRESH_TEXT) + 10
 
         wikiButton = ButtonWidget.builder(WIKI_TEXT)
-        { _: ButtonWidget? -> Util.getOperatingSystem().open(Constants.WIKI_LINK) }
-            .build()
+        { _: ButtonWidget? -> Util.getOperatingSystem().open(Constants.WIKI_LINK) }.build()
         wikiButton.y = openMusicPacksButton.y + openMusicPacksButton.height + 5
         wikiButton.width = textRenderer.getWidth(WIKI_TEXT) + 10
         wikiButton.x = width - wikiButton.width
+
+        optionsButton = ButtonWidget.builder(OPTIONS_TEXT)
+        { _: ButtonWidget? -> client?.setScreen(OptionsScreen(this)) }.build()
+        optionsButton.y = doneButton.y - doneButton.height - 5
+        optionsButton.width = textRenderer.getWidth(OPTIONS_TEXT) + 10
+        optionsButton.x = width - optionsButton.width
 
         addSelectableChild(packListWidget)
         addDrawableChild(createNewPackButton)
@@ -106,6 +99,7 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
         addDrawableChild(editButton)
         addDrawableChild(refreshButton)
         addDrawableChild(wikiButton)
+        addDrawableChild(optionsButton)
     }
 
     override fun close() {
@@ -124,7 +118,8 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
 
     companion object {
         fun getOngoingEdit(): Path? {
-            return Path(Constants.MUSIC_PACK_DIR).listDirectoryEntries()
+            return Path(Constants.MUSIC_PACK_DIR)
+                .listDirectoryEntries()
                 .firstOrNull() { file -> file.extension == "new" }
         }
 
@@ -133,5 +128,6 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
         private val REFRESH_TEXT = Text.literal("Refresh")
         private val EDIT_TEXT = Text.literal("Edit Pack")
         private val WIKI_TEXT = Text.literal("Open Wiki")
+        private val OPTIONS_TEXT = Text.literal("Options")
     }
 }

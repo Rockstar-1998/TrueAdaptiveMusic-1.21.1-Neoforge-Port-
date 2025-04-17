@@ -1,7 +1,7 @@
 package liltojustice.trueadaptivemusic.client.gui.widget
 
-import liltojustice.trueadaptivemusic.client.MusicPack
-import liltojustice.trueadaptivemusic.client.predicate.MusicPredicateTree
+import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 
 class PredicateTreeWidget(
@@ -24,7 +24,7 @@ class PredicateTreeWidget(
         clearWidgets()
         var row = 0
         musicPack.rules.traverse(
-            { node, depth ->
+            { node, path ->
                 addWidget(
                     ClickableTextWidget(
                         node.predicate.getTypeName(),
@@ -34,9 +34,9 @@ class PredicateTreeWidget(
                         },
                         isSelected = { widget -> widget === selectedWidget}),
                     row++,
-                    depth * INDENT)
+                    (path.size - 1) * INDENT)
             },
-            { node, depth ->
+            { node, path ->
                 addWidget(
                     ClickableTextWidget("+ Add",
                         onClick = { widget ->
@@ -44,7 +44,7 @@ class PredicateTreeWidget(
                             onSelectCreateNewNode(node) },
                         isSelected = { widget -> widget === selectedWidget }),
                     row++,
-                    (depth + 1) * INDENT)
+                    path.size * INDENT)
             })
     }
 
