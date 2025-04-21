@@ -1,10 +1,11 @@
-package liltojustice.trueadaptivemusic.client.gui.widget
+package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 
 class MultiSelectDropdownWidget(
     private val options: List<String>,
+    width: Int,
     private val onChange: (selected: List<String>) -> Unit = {},
     private val title: String = "",
     private val getOptions: (() -> List<String>)? = null,
@@ -14,9 +15,10 @@ class MultiSelectDropdownWidget(
     x: Int = 0,
     y: Int = 0)
     : ContainerWidget(
-    500,
+    width.takeUnless { it == 0 } ?: 500,
     500,
     "Dropdown: $title",
+    false,
     false,
     false,
     false,
@@ -40,13 +42,15 @@ class MultiSelectDropdownWidget(
                         onChange(selected)
                         clearWidgetsFromRender { widget -> widget.id != "dropdown" }
                     },
+                    width,
                     title,
                     getOptions,
                     notSelectedPlaceholder,
                     "",
                     onHoverOption,
                     x,
-                    y)
+                    y
+                )
             },
             "dropdown"
         ) as DropdownWidget

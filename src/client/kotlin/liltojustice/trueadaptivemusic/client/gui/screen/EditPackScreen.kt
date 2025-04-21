@@ -18,9 +18,7 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.Util
 
 @Environment(EnvType.CLIENT)
-class EditPackScreen(
-    private val parent: Screen,
-    private val musicPack: MusicPack)
+class EditPackScreen(private val parent: Screen, private val musicPack: MusicPack)
     : Screen(Text.literal("Create/Edit a music pack")) {
     private lateinit var predicateViewWidget: PredicateViewWidget
     private lateinit var packStructureWidget: PackStructureWidget
@@ -33,9 +31,14 @@ class EditPackScreen(
     private val eventView: Boolean
         get() = eventViewWidget.visible
 
-    override fun init() {
+    private fun initPack() {
         TAMClient.playSoundNow(null)
-        musicPack.initEdit(musicPack)
+        val newPath = musicPack.initEdit(musicPack)
+        TAMClient.musicPack = MusicPack.fromFile(newPath)
+    }
+
+    override fun init() {
+        initPack()
 
         saveButtonWidget = IconButtonWidget.Builder(SAVE_BUTTON_TEXT, CHECKMARK) {
             TAMClient.musicPack = null
@@ -62,7 +65,10 @@ class EditPackScreen(
             getContainerWidth(),
             getContainerHeight(),
             musicPack,
-            { packStructureWidget.initPredicateWidgets() },
+            {
+                initPack()
+                packStructureWidget.initPredicateWidgets()
+            },
             { event -> switchToEventView(event) },
             { eventView })
         packStructureWidget = PackStructureWidget(

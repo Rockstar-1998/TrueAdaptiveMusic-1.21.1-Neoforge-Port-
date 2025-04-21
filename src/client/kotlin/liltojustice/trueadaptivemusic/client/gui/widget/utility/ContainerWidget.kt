@@ -1,9 +1,8 @@
-package liltojustice.trueadaptivemusic.client.gui.widget
+package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.font.TextRenderer
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen.OPTIONS_BACKGROUND_TEXTURE
 import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.text.Text
 import net.minecraft.util.Colors
@@ -18,6 +17,7 @@ abstract class ContainerWidget(
     message: String,
     private val showHeader: Boolean,
     private val bordered: Boolean,
+    private val scrollable: Boolean = false,
     private val indentChildren: Boolean = true,
     x: Int = 0,
     y: Int = 0,
@@ -49,25 +49,13 @@ abstract class ContainerWidget(
             return
         }
 
-        if (bordered) {
-            context?.setShaderColor(0f, 0f, 0f, 1f)
-            context?.drawTexture(
-                OPTIONS_BACKGROUND_TEXTURE, x, y, 0f, 0f, width, height, 32, 32
-            )
-        }
-        else {
-            context?.setShaderColor(0.125f, 0.125f, 0.125f, 1.0f)
-            context?.drawTexture(
-                OPTIONS_BACKGROUND_TEXTURE, x, y, 0f, 0f, width, height, 32, 32
-            )
-        }
-        context?.setShaderColor(1f, 1f, 1f, 1f)
+        super.render(context, mouseX, mouseY, delta)
 
         if (showHeader)
         {
-            context?.setShaderColor(0.05f, 0.05f, 0.05f, 1.0f)
-            context?.drawTexture(
-                OPTIONS_BACKGROUND_TEXTURE, x, y, 0F, 0F, width, TOP_MARGIN, 32, 32)
+            context?.setShaderColor(0f, 0f, 0f, if (bordered) 1f else 0.5f)
+            context?.fill(x, y, x + this.width, y + this.height, Colors.BLACK)
+            context?.fill(x, y,  x + width, y + TOP_MARGIN, Colors.BLACK)
             context?.setShaderColor(1f, 1f, 1f, 1f)
             drawCenteredText(context, message.string, -1, width / 2, shadow = true)
             backButton?.let {
@@ -75,25 +63,29 @@ abstract class ContainerWidget(
                 it.y = (y + getHeaderOffset() - getRowHeight(textRenderer.fontHeight)).toInt()
                 it.render(context, mouseX, mouseY, delta)
             }
+            context?.setShaderColor(1f, 1f, 1f, 1f)
         }
 
         if (bordered) {
+            context?.fill(x, y, x + width, y + height, Colors.BLACK)
             context?.drawBorder(x, y, width, height, Colors.WHITE)
         }
 
         clampScrollPosition()
         drawScrollBar(context)
 
+        context?.enableScissor(x, y + getHeaderOffset() - 2, x + width, y + height)
         children.forEach { (_, child) ->
             val translated = child.translated(scrollPosition)
             translated.widget.x = x + translated.xOffset + if (indentChildren) X_MARGIN else 0
             translated.widget.y = getTranslatedY(translated.row)
             translated.widget.width = min(translated.widget.width, width - translated.xOffset - 2 * X_MARGIN)
-            if (childVisible(translated))
-            {
-                translated.widget.render(context, mouseX, mouseY, delta)
-            }
+            val prevVisibility = translated.widget.visible
+            translated.widget.visible = prevVisibility && contains(translated.widget)
+            translated.widget.render(context, mouseX, mouseY, delta)
+            translated.widget.visible = prevVisibility
         }
+        context?.disableScissor()
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -143,7 +135,9 @@ abstract class ContainerWidget(
             return false
         }
 
-        scrollPosition -= amount.toInt()
+        if (scrollable) {
+            scrollPosition -= amount.toInt()
+        }
 
         return true
     }
@@ -307,6 +301,10 @@ abstract class ContainerWidget(
     }
 
     private fun drawScrollBar(context: DrawContext?) {
+        if (!scrollable) {
+            return
+        }
+
         val usedRows = maxUsedRow(countOffscreen = true) + 1
         val totalRows = totalRows()
         if (usedRows > totalRows) {
@@ -315,11 +313,15 @@ abstract class ContainerWidget(
             val barSize = ratio * adjustedHeight
             val start = (scrollPosition.toDouble() / (usedRows - totalRows)) * adjustedHeight * (1 - ratio)
             val end = start + barSize
+            val y1 = (y + start + getHeaderOffset()).toInt()
+            val y2 = (y + end + getHeaderOffset()).toInt()
+            val diff = y2 - y1
             context?.drawVerticalLine(
                 x + width - 3,
-                (y + start + getHeaderOffset()).toInt(),
-                (y + end + getHeaderOffset()).toInt(),
-                Colors.WHITE)
+                y1,
+                if (diff < 2) y2 + (2 - diff) else y2,
+                Colors.WHITE
+            )
         }
     }
 
@@ -333,6 +335,17 @@ abstract class ContainerWidget(
             child.widget is ContainerWidget && child.widget.shouldBlockScroll(mouseX, mouseY) }
     }
 
+    private fun contains(widget: ClickableWidget): Boolean {
+        val left = x
+        val right = left + width
+        val top = y + getHeaderOffset()
+        val bottom = top + height - getHeaderOffset()
+        val widgetLeft = widget.x
+        val widgetRight = widgetLeft + widget.width
+        val widgetTop = widget.y
+        val widgetBottom = widgetTop + widget.height
+        return left <= widgetRight && right >= widgetLeft && top <= widgetBottom && bottom >= widgetTop
+    }
 
     companion object {
         private const val TOP_MARGIN = 12
@@ -343,7 +356,7 @@ abstract class ContainerWidget(
         }
 
         private fun makeBackButton(backButtonCallback: () -> Unit): ClickableTextWidget {
-            return backButtonCallback.let { ClickableTextWidget("Back", onClick = { it() } ) }
+            return backButtonCallback.let { ClickableTextWidget("Back", onClick = { it() }) }
         }
     }
 

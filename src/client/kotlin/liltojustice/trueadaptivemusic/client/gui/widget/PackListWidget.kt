@@ -2,6 +2,7 @@ package liltojustice.trueadaptivemusic.client.gui.widget
 
 import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.music.MusicPackValidation
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.tooltip.Tooltip
@@ -44,13 +45,12 @@ class PackListWidget(
         private val musicPack: MusicPack?,
         private val onSelectPack: (selectedPack: MusicPack?) -> Unit)
         : AlwaysSelectedEntryListWidget.Entry<Entry>() {
-        private val validation = musicPack?.validate() ?: emptyList()
         private val issuesButton =
-            if (validation.isEmpty())
+            if (musicPack?.validationMessages?.isEmpty() != false)
                 null
             else
                 ButtonWidget.Builder(issuesText) {}
-                .tooltip(Tooltip.of(Text.literal(validation.joinToString { message -> "$message\n" })))
+                .tooltip(Tooltip.of(getValidationText(musicPack.validationMessages)))
                 .width(client.textRenderer.getWidth(issuesText) + 5)
                 .build()
 
@@ -99,7 +99,12 @@ class PackListWidget(
             if (packListWidget.selectedOrNull == this) {
                 return true
             }
-            
+
+            if (this.musicPack?.isValid == false)
+            {
+                return false
+            }
+
             packListWidget.setSelected(this)
             onSelectPack(musicPack)
 
@@ -112,6 +117,31 @@ class PackListWidget(
 
         companion object {
             private val issuesText = Text.literal("Issues Found")
+            private fun getValidationText(validation: List<MusicPackValidation.ValidationMessage>): Text {
+                val warnings = validation.filter { it.type == MusicPackValidation.ValidationMessage.Type.Warning }
+                val errors = validation.filter { it.type == MusicPackValidation.ValidationMessage.Type.Error }
+                val result = StringBuilder()
+                if (warnings.isNotEmpty()) {
+                    result.append("${warnings.size} warning(s)")
+                }
+
+                if (warnings.isNotEmpty() && errors.isNotEmpty()) {
+                    result.append(" and ")
+                }
+
+                if (errors.isNotEmpty()) {
+                    result.append("${errors.size} error(s)")
+                }
+
+                if (warnings.isNotEmpty() || errors.isNotEmpty()) {
+                    result.appendLine()
+                    result.appendLine()
+                }
+
+                result.append(validation.joinToString("\n\n") { message -> message.toString() })
+
+                return Text.literal(result.toString())
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-package liltojustice.trueadaptivemusic.client.gui.widget
+package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.DrawContext
@@ -14,16 +14,16 @@ open class ClickableTextWidget(
     private val showHighlight: Boolean = true,
     private val onClick: (ClickableTextWidget) -> Unit = {},
     private val isSelected: (ClickableTextWidget) -> Boolean = { false })
-    : ClickableWidget(x, y, 0, 0, Text.literal("Clickable Text Widget")),
+    : ClickableWidget(x, y, 0, 0, Text.literal(text)),
     DataWrapped<ClickableTextWidget> {
     override var customData: Any? = null
     private val textRenderer = MinecraftClient.getInstance().textRenderer
     var color: Int = Colors.WHITE
-    var text = text
-        private set
+    val text: String
+        get() = message.string
 
     init {
-        width = textRenderer.getWidth(text)
+        width = textRenderer.getWidth(message)
         height = textRenderer.fontHeight
     }
 
@@ -39,15 +39,15 @@ open class ClickableTextWidget(
                 y - BORDER_BUFFER / 2,
                 width + BORDER_BUFFER,
                 height + BORDER_BUFFER,
-                Colors.WHITE)
+                Colors.WHITE
+            )
         }
 
         if (!selected && showHighlight && isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
             context?.drawHorizontalLine(x, x + width, y + textRenderer.fontHeight, Colors.WHITE)
         }
 
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        context?.drawText(textRenderer, text, x, y, color, true)
+        drawScrollableText(context, textRenderer, message, x, y, x + width, y + height, color)
         super.render(context, mouseX, mouseY, delta)
     }
 
@@ -67,8 +67,8 @@ open class ClickableTextWidget(
     }
 
     fun setText(text: String) {
-        this.text = text
-        this.width = textRenderer.getWidth(text)
+        message = Text.literal(text)
+        this.width = textRenderer.getWidth(message)
     }
 
     companion object {

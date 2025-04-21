@@ -1,9 +1,10 @@
 package liltojustice.trueadaptivemusic.client.gui.widget
 
 import liltojustice.trueadaptivemusic.client.TAMClient
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.*
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
-import liltojustice.trueadaptivemusic.client.identifier.TypedIdentifier
 import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 import net.minecraft.client.gui.tooltip.Tooltip
@@ -19,7 +20,8 @@ class EventViewWidget(
     private val onExitView: (newEvent: MusicEvent?) -> Unit,
     x: Int = 0,
     y: Int = 0)
-    : ContainerWidget(width, height, "Event View", true, false, true, x, y) {
+    : ContainerWidget(
+    width, height, "Event View", true, false, true, true, x, y) {
     private val eventTypeNameOptions = MusicEvent.getTypeNames()
     private var selectedEventTypeName: String = eventTypeNameOptions.firstOrNull() ?: ""
     private var requiredEventArgs = listOf<KParameter>()
@@ -34,12 +36,13 @@ class EventViewWidget(
 
     fun setEvent(event: MusicEvent?) {
         selectedEvent = event
-        event?.let {
-            setSelectedEventTypeName(it.getTypeName())
-            eventArgs = (it.getTriggerParams().map { param -> param.value }).toMutableList()
+        if (event != null) {
+            setSelectedEventTypeName(event.getTypeName())
+            eventArgs = (event.getTriggerParams().map { param -> param.value }).toMutableList()
             selectedMusicPaths = event.playableSounds.map { sound -> sound.getSoundName() }.toMutableList()
-        } ?: {
-            setSelectedEventTypeName(MusicEvent.getTypeNames().firstOrNull() ?: "")
+        }
+        else {
+            setSelectedEventTypeName(eventTypeNameOptions.firstOrNull() ?: "")
             selectedMusicPaths = mutableListOf()
         }
     }
@@ -57,6 +60,22 @@ class EventViewWidget(
 
     override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(context, mouseX, mouseY, delta)
+        if (selectedEvent is ErrorEvent) {
+            addWidgetFromRender(
+                {
+                    ClickableTextWidget(
+                        "Delete",
+                        onClick = {
+                            exit(null)
+                        }
+                    )
+                },
+                "Delete"
+            )
+
+            return
+        }
+
         if (!visible) {
             return
         }
@@ -66,6 +85,7 @@ class EventViewWidget(
                 DropdownWidget(
                     eventTypeNameOptions,
                     { typeName ->  setSelectedEventTypeName(typeName) },
+                    width / 2,
                     "Type",
                     startingOption = selectedEventTypeName)
             },
@@ -76,6 +96,7 @@ class EventViewWidget(
             {
                 MultiSelectDropdownWidget(
                     listOf(),
+                    width,
                     { selected -> selectedMusicPaths = selected.toMutableList() },
                     "Music Choice",
                     {
@@ -140,11 +161,6 @@ class EventViewWidget(
         saveWidget.tooltip =
             if (saveWidget.active)
                 null
-            else if (requiredEventArgs.any { arg ->
-                    InputWidgetMaker.isTypedIdentifierList(arg.type)
-                            && TypedIdentifier.getRegistryIdsFromType(arg.type.arguments.firstOrNull()!!.type!!)
-                        .isEmpty() })
-                DYNAMIC_REGISTRY_TOOLTIP
             else
                 MISSING_ARGS_TOOLTIP
     }
@@ -157,7 +173,7 @@ class EventViewWidget(
         selectedEventTypeName = typeName
         requiredEventArgs = MusicEvent.getRequiredArgsFromTypeName(typeName)
         eventArgs = requiredEventArgs.map { null }.toMutableList()
-        clearWidgetsFromRender { childWidget -> childWidget.id in arrayOf("eventTypeChoice", "musicChoice") }
+        clearWidgetsFromRender()
     }
 
     private fun exit(event: MusicEvent?) {
@@ -171,11 +187,7 @@ class EventViewWidget(
     }
 
     companion object {
-        private val DYNAMIC_REGISTRY_TOOLTIP =
-            Tooltip.of(Text.literal("Can't access required dynamic registry. Try again while a world is loaded."))
-
         private val MISSING_ARGS_TOOLTIP =
             Tooltip.of(Text.literal("At least one required parameter for this type is missing."))
     }
 }
-

@@ -1,6 +1,12 @@
 package liltojustice.trueadaptivemusic.client.gui.widget
 
+import liltojustice.trueadaptivemusic.Constants
+import liltojustice.trueadaptivemusic.client.gui.extensions.getTriggerTooltipString
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.ClickableTextWidget
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.ContainerWidget
 import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
+import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
@@ -16,7 +22,8 @@ class PackStructureWidget(
     private val onSelectCreateNewNode: (parent: MusicPredicateTree.Node) -> Unit,
     x: Int = 0,
     y: Int = 0)
-    : ContainerWidget(width, height, "Pack Structure", true, false, true, x, y) {
+    : ContainerWidget(
+    width, height, "Pack Structure", true, false, true, true, x, y) {
     private var selectedWidget: NodeWidget? = null
     private var mouseButtonHeld = false
     private val selectedNode
@@ -35,6 +42,10 @@ class PackStructureWidget(
                     NodeWidget(
                         node.predicate.getTypeName(),
                         onClick = { widget ->
+                            if (selectedWidget === widget) {
+                                return@NodeWidget
+                            }
+
                             onSelectEditExistingNode(node)
                             selectedWidget = widget as NodeWidget
                         },
@@ -43,15 +54,30 @@ class PackStructureWidget(
                     row++,
                     (path.size - 1) * INDENT) as NodeWidget
 
+                if (node.predicate is ErrorPredicate) {
+                    newWidget.color = Colors.RED
+                }
+                else if (node.events.any { event -> event is ErrorEvent }) {
+                    newWidget.color = Constants.Colors.YELLOW
+                }
+
                 if (newWidget.targetNode.node === selectedNode) {
                     selectedWidget = newWidget
                 }
             },
             { node, path ->
+                if (node.predicate is ErrorPredicate) {
+                    return@traverse
+                }
+
                 addWidget(
                     NodeWidget(
                         "+ Add",
                         onClick = { widget ->
+                            if (selectedWidget === widget) {
+                                return@NodeWidget
+                            }
+
                             onSelectCreateNewNode(node)
                             selectedWidget = widget as NodeWidget
                         },
@@ -112,12 +138,19 @@ class PackStructureWidget(
 
     override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
         forEachChild { child ->
-            child.tooltip = if (selectedWidget === child
-                && !child.targetNode.isParent
-                && child.targetNode.node.parent != null)
-                child.tooltip ?: Tooltip.of(MOVE_NODE_TEXT)
-            else
-                null
+            if (child !is NodeWidget) {
+                return@forEachChild
+            }
+
+            val baseTooltipText = child.getBaseTooltipString()
+            child.tooltip =
+                if (selectedWidget === child && !child.targetNode.isParent && child.targetNode.node.parent != null)
+                    if (baseTooltipText.isBlank())
+                        Tooltip.of(Text.literal(MOVE_NODE_STRING))
+                    else
+                        Tooltip.of(Text.literal("$MOVE_NODE_STRING\n$baseTooltipText"))
+                else
+                    Tooltip.of(Text.literal(baseTooltipText))
         }
 
         super.render(context, mouseX, mouseY, delta)
@@ -152,8 +185,8 @@ class PackStructureWidget(
 
     companion object {
         const val INDENT = 10
+        const val MOVE_NODE_STRING = "Click and drag to move"
         val ARROW_TEXT: Text = Text.literal("->")
-        val MOVE_NODE_TEXT: Text = Text.literal("Click and drag to move")
     }
 
     class NodeWidget(text: String, onClick: (ClickableTextWidget) -> Unit, isSelected: (ClickableTextWidget) -> Boolean)
@@ -162,8 +195,20 @@ class PackStructureWidget(
         val targetNode
             get() = customData as TargetNode
 
+        fun getBaseTooltipString(): String {
+            if (targetNode.isParent) {
+                return "Create a new node"
+            }
+
+            return targetNode.node.predicate.getTriggerTooltipString() +
+                    if (targetNode.node.events.any { event -> event is ErrorEvent })
+                        "\n\nHas event errors. Click to see."
+                    else
+                        ""
+        }
+
         fun isValidDestination(selectedNode: MusicPredicateTree.Node): Boolean {
-            return targetNode.node.parent != null && targetNode.node.isValidNewChild(selectedNode)
+            return (targetNode.node.parent != null || targetNode.isParent) && targetNode.node.isValidNewChild(selectedNode)
         }
     }
 

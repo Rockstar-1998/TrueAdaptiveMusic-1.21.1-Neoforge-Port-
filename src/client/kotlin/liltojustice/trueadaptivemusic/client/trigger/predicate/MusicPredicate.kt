@@ -11,11 +11,16 @@ abstract class MusicPredicate: MusicTrigger {
 
     companion object: MusicPredicateCompanion<MusicPredicate> {
         override fun getTypeName(): String {
-            throw MusicPredicateException("Attempt to get type name from abstract predicate type.")
+            throw MusicTriggerException("Attempt to get type name from abstract predicate type.")
         }
 
         override fun fromJson(json: JsonObject): MusicPredicate {
-            return MusicTrigger.fromJsonProvideSubclasses(json, getTriggerImplementerSubclasses()) as MusicPredicate
+            try {
+                return MusicTrigger.fromJsonProvideSubclasses(json, getTriggerImplementerSubclasses()) as MusicPredicate
+            }
+            catch (e: MusicTriggerException) {
+                return ErrorPredicate(json, e.message ?: "Unknown")
+            }
         }
     }
 

@@ -1,4 +1,4 @@
-package liltojustice.trueadaptivemusic.client.gui.widget
+package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
@@ -8,6 +8,7 @@ import net.minecraft.text.Text
 class DropdownWidget(
     options: List<String>,
     onSelectOption: (optionText: String) -> Unit,
+    width: Int = 0,
     title: String = "",
     getOptions: (() -> List<String>)? = null,
     notSelectedPlaceholder: String? = null,
@@ -16,9 +17,10 @@ class DropdownWidget(
     x: Int = 0,
     y: Int = 0)
     : ContainerWidget(
-    0,
+    width,
     0,
     "Dropdown: $title",
+    false,
     false,
     false,
     true,
@@ -26,20 +28,17 @@ class DropdownWidget(
     y,
     true) {
     private val titleText = Text.literal(if (title.isBlank()) "" else "$title: ")
-    private var textInputWidth = (
-            if (notSelectedPlaceholder != null)
-                textRenderer.getWidth(notSelectedPlaceholder)
-            else
-                (options.maxOfOrNull { option -> textRenderer.getWidth(option) } ?: 0)) +
-            TEXT_WIDTH_BUFFER
     private var dropdownResultsWidget: DropdownResultsWidget
+    private val realizedWidth = width.takeUnless { width == 0 }
+        ?: ((options.maxOfOrNull { option -> textRenderer.getWidth(option) } ?: 0) + TEXT_WIDTH_BUFFER)
     private val textInputWidget = TextFieldWidget(
         textRenderer,
         0,
         0,
-        textInputWidth,
+        realizedWidth,
         textRenderer.fontHeight + TEXT_HEIGHT_BUFFER,
-        Text.literal("Dropdown Search"))
+        Text.literal("Dropdown Search")
+    )
     private val selectedOptionWidget = ClickableTextWidget(
         notSelectedPlaceholder ?: startingOption.ifEmpty { null } ?: options.firstOrNull() ?: "",
         onClick = { screen?.focused = textInputWidget },
@@ -48,7 +47,7 @@ class DropdownWidget(
 
     init {
         titleTextWidget.active = false
-        width = textInputWidth
+        this.width = realizedWidth
         dropdownResultsWidget = DropdownResultsWidget(
             options,
             { option ->
@@ -102,6 +101,7 @@ class DropdownWidget(
         0,
         "Dropdown List",
         false,
+        true,
         true,
         true,
         x,

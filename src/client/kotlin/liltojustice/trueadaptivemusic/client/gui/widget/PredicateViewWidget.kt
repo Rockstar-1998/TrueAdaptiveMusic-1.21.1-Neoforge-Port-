@@ -1,9 +1,12 @@
 package liltojustice.trueadaptivemusic.client.gui.widget
 
 import liltojustice.trueadaptivemusic.client.TAMClient
+import liltojustice.trueadaptivemusic.client.gui.extensions.getTriggerTooltipText
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.*
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
-import liltojustice.trueadaptivemusic.client.identifier.TypedIdentifier
 import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
+import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
@@ -25,7 +28,8 @@ class PredicateViewWidget(
     private val inEventView: () -> Boolean,
     x: Int = 0,
     y: Int = 0)
-    : ContainerWidget(width, height, "Predicate View", true, false, true, x, y) {
+    : ContainerWidget(
+    width, height, "Predicate View", true, false, true, true, x, y) {
     private val predicateTypeNameOptions = MusicPredicate.getTypeNames()
         .filter { typeName -> typeName != RootPredicate.getTypeName() }
     private var selectedPredicateTypeName: String = predicateTypeNameOptions.firstOrNull() ?: ""
@@ -114,12 +118,18 @@ class PredicateViewWidget(
     }
 
     private fun renderEditMode(mouseX: Int, mouseY: Int) {
-        if (selectedNode?.predicate?.getTypeName() != RootPredicate.getTypeName()) {
+        if (selectedNode?.predicate is ErrorPredicate) {
+            renderErrorMode()
+            return
+        }
+
+        if (selectedNode?.predicate !is RootPredicate) {
             addWidgetFromRender(
                 {
                     DropdownWidget(
                         predicateTypeNameOptions,
                         { typeName ->  setSelectedPredicateTypeName(typeName) },
+                        width,
                         "Type",
                         startingOption = selectedPredicateTypeName)
                 },
@@ -131,6 +141,7 @@ class PredicateViewWidget(
             {
                 MultiSelectDropdownWidget(
                     listOf(),
+                    width,
                     { selected -> selectedMusicPaths = selected.toMutableList() },
                     "Music Choice",
                     {
@@ -177,12 +188,23 @@ class PredicateViewWidget(
 
         events.forEach { event ->
             addWidgetFromRender(
-                { ClickableTextWidget(
+                { val eventWidget = ClickableTextWidget(
                     event.getTypeName(),
                     onClick = {
+                        if (selectedEvent === event) {
+                            return@ClickableTextWidget
+                        }
+
                         selectedEvent = event
                         onEventClick(event) },
-                    isSelected = { selectedEvent == event }) },
+                    isSelected = { selectedEvent == event })
+                    eventWidget.tooltip = Tooltip.of(event.getTriggerTooltipText())
+                    if (event is ErrorEvent) {
+                        eventWidget.color = Colors.RED
+                    }
+
+                    eventWidget
+                },
                 "event: ${event.hashCode()}")
         }
 
@@ -251,13 +273,23 @@ class PredicateViewWidget(
         saveWidget.tooltip =
             if (saveWidget.active)
                 null
-            else if (requiredPredicateArgs.any { arg ->
-                InputWidgetMaker.isTypedIdentifierList(arg.type)
-                        && TypedIdentifier.getRegistryIdsFromType(arg.type.arguments.firstOrNull()!!.type!!)
-                            .isEmpty() })
-                DYNAMIC_REGISTRY_TOOLTIP
             else
                 MISSING_ARGS_TOOLTIP
+    }
+
+    private fun renderErrorMode() {
+        addWidgetFromRender(
+            {
+                ClickableTextWidget(
+                    "Delete",
+                    onClick = {
+                        selectedNode?.orphan()
+                        save()
+                    }
+                )
+            },
+            "Delete"
+        )
     }
 
     private fun unsetAll() {
@@ -273,9 +305,6 @@ class PredicateViewWidget(
     }
 
     companion object {
-        private val DYNAMIC_REGISTRY_TOOLTIP =
-            Tooltip.of(Text.literal("Can't access required dynamic registry. Try again while a world is loaded."))
-
         private val MISSING_ARGS_TOOLTIP =
             Tooltip.of(Text.literal("At least one required parameter for this type is missing."))
     }
