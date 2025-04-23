@@ -5,15 +5,16 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import liltojustice.trueadaptivemusic.Constants
-import liltojustice.trueadaptivemusic.LogLevel
-import liltojustice.trueadaptivemusic.Logger.Companion.log
+import liltojustice.trueadaptivemusic.Logger
 import liltojustice.trueadaptivemusic.client.sound.file.RegularSoundFile
 import liltojustice.trueadaptivemusic.client.sound.file.ZipSoundFile
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSound
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSoundEvent
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSoundFile
 import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
+import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
+import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import net.minecraft.registry.Registries
 import net.minecraft.sound.SoundEvent
@@ -27,6 +28,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.*
+import kotlin.reflect.KClass
 
 class MusicPack private constructor(
     val metadata: Metadata,
@@ -168,17 +170,60 @@ class MusicPack private constructor(
             )
         }
 
+        val usedPredicateTypes = mutableSetOf<KClass<out MusicPredicate>>()
+        val usedEventTypes = mutableSetOf<KClass<out MusicEvent>>()
         rules.traverse { node, _ ->
             (node.predicate as? ErrorPredicate)?.let {
                 validation.addWarning(it.reason)
             }
+
+            usedPredicateTypes.add(node.predicate::class)
+
             node.events.forEach { event ->
                 (event as? ErrorEvent)?.let {
                     validation.addWarning(it.reason)
                 }
+
+                usedEventTypes.add(event::class)
             }
         }
+
+        // TODO: Figure out how to properly include ASMDependencyAnalyzer
+        /*val analyzer = ASMDependencyAnalyzer()
+        usedPredicateTypes.forEach { kClass -> validateClass(kClass, analyzer) }
+        usedEventTypes.forEach { kClass -> validateClass(kClass, analyzer) }*/
     }
+
+    /*private fun validateClass(kClass: KClass<*>, analyzer: ASMDependencyAnalyzer) {
+        val typeName = (kClass.companionObject?.objectInstance as? MusicPredicate.MusicPredicateCompanion<*>)
+            ?.getTypeName() ?: kClass.qualifiedName
+        val packageName = kClass.java.packageName
+        val referencedClasses = analyzer.analyze(kClass.java.protectionDomain.codeSource.location)
+        val badReferences =
+            referencedClasses.filter { ref ->
+                !relatedPackages(packageNameOf(ref), packageName) &&
+                        runCatching { kClass.java.classLoader.loadClass(ref) }
+                            .getOrDefault(false) == false }
+        val commonPackages = badReferences.map { outerRef ->
+            badReferences.fold(outerRef) { acc, innerRef ->
+                commonPackage(acc, innerRef) ?: acc
+            }
+        }.toSet()
+        val parentType =
+            if (kClass.isSubclassOf(MusicPredicate::class))
+                "Predicate "
+            else if (kClass.isSubclassOf(MusicEvent::class))
+                "Event "
+            else
+                ""
+
+        if (badReferences.isNotEmpty()) {
+            validation.addWarning(
+                "$parentType$typeName references ${badReferences.size} unknown class(es) from " +
+                        "${commonPackages.size} missing package(s):\n\n" + commonPackages.joinToString("\n")
+                        + "\nYou are probably missing a mod.")
+        }
+    }*/
 
     private fun getEditPackDir(): Path {
         return Path(Constants.MUSIC_PACK_DIR, "${Path(packName).nameWithoutExtension}.new")
@@ -195,7 +240,7 @@ class MusicPack private constructor(
                     return@mapNotNull fromFile(path)
                 }
                 catch (e: Exception) {
-                    log("Failed to load pack from path $path:\n${e}", LogLevel.ERROR)
+                    Logger.logError("Failed to load pack from path $path:\n${e}")
                 }
 
                 return@mapNotNull null
@@ -238,7 +283,7 @@ class MusicPack private constructor(
                             )
                     } catch (_: InvalidIdentifierException) {}
 
-                    log("Could not find \"$path\", skipping...", LogLevel.WARNING)
+                    Logger.logWarning("Could not find \"$path\", skipping...")
                     return@map null
                 }.filterNotNull()
         }
@@ -262,7 +307,8 @@ class MusicPack private constructor(
             val assetsDir = files.find { file -> file.fileName.name == Constants.ASSETS_DIRNAME }
             if (assetsDir == null)
             {
-                log("Assets dir ${Constants.ASSETS_DIRNAME} is missing, so no external music will be used")
+                Logger.logInfo(
+                    "Assets dir ${Constants.ASSETS_DIRNAME} is missing, so no external music will be used")
             }
             val playableSoundFiles = assetsDir?.listDirectoryEntries()
                 ?.map { file -> PlayableSoundFile(RegularSoundFile(file)) }
@@ -344,6 +390,20 @@ class MusicPack private constructor(
 
         private fun isZipAsset(fileName: String): Boolean {
             return fileName.contains(Constants.ASSETS_DIRNAME + Path("").fileSystem.separator)
+        }
+
+        private fun packageNameOf(qualifiedClassName: String): String {
+            return qualifiedClassName.split(".").dropLast(1).joinToString(".")
+        }
+
+        private fun commonPackage(first: String, second: String): String? {
+            return first.commonPrefixWith(second)
+                .dropLastWhile { c -> c == '.' }
+                .takeIf { it.split(".").size > 1 }
+        }
+
+        private fun relatedPackages(first: String, second: String): Boolean {
+            return commonPackage(first, second) != null
         }
     }
 

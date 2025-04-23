@@ -1,6 +1,5 @@
 package liltojustice.trueadaptivemusic.client.music
 
-import liltojustice.trueadaptivemusic.LogLevel
 import liltojustice.trueadaptivemusic.Logger
 import liltojustice.trueadaptivemusic.client.InvokeMusicEventCallback
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
@@ -41,7 +40,8 @@ class MusicManager(
 
     init {
         InvokeMusicEventCallback.EVENT.register { eventType, args ->
-            activeEvents.firstOrNull { event -> eventType == event.getTypeName() && event.validate(*args) }
+            activeEvents.firstOrNull { event ->
+                eventType == event.getTypeName() && runCatching { event.validate(*args) }.getOrNull() == true }
                 ?.let { event ->
                     event.playableSounds.randomOrNull()?.let {
                         playNow(it, true)
@@ -212,7 +212,7 @@ class MusicManager(
             }
         }
         catch (e: MusicLoadException) {
-            Logger.log("Error: Failed to play sound instance - ${e.message}", LogLevel.ERROR)
+            Logger.logError("Error: Failed to play sound instance - ${e.message}")
         }
     }
 
@@ -229,6 +229,7 @@ class MusicManager(
         timedIdentifierTimerTask = null
         currentMusicPredicateId = ""
         oldMusicPredicateId = ""
+        activeEvents = emptyList()
     }
 
     private fun beginCrossfade(newSoundInstance: SoundInstance) {
