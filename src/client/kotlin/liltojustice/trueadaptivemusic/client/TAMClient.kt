@@ -3,6 +3,7 @@ package liltojustice.trueadaptivemusic.client
 import liltojustice.trueadaptivemusic.Constants
 import liltojustice.trueadaptivemusic.Logger
 import liltojustice.trueadaptivemusic.TrueAdaptiveMusicOptions
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.InputWidgetMaker
 import liltojustice.trueadaptivemusic.client.music.MusicLoadException
 import liltojustice.trueadaptivemusic.client.music.MusicManager
 import liltojustice.trueadaptivemusic.client.music.MusicPack
@@ -14,10 +15,14 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateFactory
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateRegistry
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.client.sound.SoundInstance
 import java.io.IOException
 import kotlin.io.path.Path
 import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
+import kotlin.reflect.KType
 
 object TAMClient {
     private var initialized = false
@@ -26,6 +31,7 @@ object TAMClient {
     val eventRegistry = MusicEventRegistry()
     val predicateFactory = MusicPredicateFactory(predicateRegistry)
     val eventFactory = MusicEventFactory(eventRegistry)
+    private val inputWidgetMaker = InputWidgetMaker()
 
     var options: TrueAdaptiveMusicOptions = TrueAdaptiveMusicOptions()
         set(value) {
@@ -84,6 +90,22 @@ object TAMClient {
 
     fun registerEvent(name: String, triggerType: Class<out MusicEvent>) {
         eventRegistry[name] = triggerType
+    }
+
+    fun registerInputWidget(
+        predicate: (parameterType: KType) -> Boolean,
+        widgetMaker: (prompt: String, screen: Screen, outArgs: MutableList<Any?>, arg: KParameter) -> ClickableWidget) {
+        inputWidgetMaker.register(predicate, widgetMaker)
+    }
+
+    fun registerInputWidget(
+        parameterType: KType,
+        widgetMaker: (prompt: String, screen: Screen, outArgs: MutableList<Any?>, arg: KParameter) -> ClickableWidget) {
+        registerInputWidget({ type -> type == parameterType}, widgetMaker)
+    }
+
+    fun makeInputWidget(screen: Screen, outArgs: MutableList<Any?>, arg: KParameter): ClickableWidget {
+        return inputWidgetMaker.makeWidget(screen, outArgs, arg)
     }
 
     private fun initialize(client: MinecraftClient) {
