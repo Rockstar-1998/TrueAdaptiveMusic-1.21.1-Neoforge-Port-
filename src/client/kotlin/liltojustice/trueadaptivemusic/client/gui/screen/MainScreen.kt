@@ -10,12 +10,14 @@ import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.screen.ScreenTexts
 import net.minecraft.text.Text
+import net.minecraft.util.Colors
 import net.minecraft.util.Util
 import java.nio.file.Path
 import kotlin.io.path.*
 
 @Environment(EnvType.CLIENT)
-class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")) {
+class MainScreen(private val parent: Screen): Screen(
+    Text.translatableWithFallback("trueadaptivemusic.music_packs", "Music Packs")) {
     private lateinit var createNewPackButton: ButtonWidget
     private lateinit var packListWidget: PackListWidget
     private lateinit var openMusicPacksButton: ButtonWidget
@@ -98,7 +100,8 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
 
     override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
         this.packListWidget.render(context, mouseX, mouseY, delta)
-        context?.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 8, 16777215)
+        context?.drawCenteredTextWithShadow(
+            this.textRenderer, this.title, this.width / 2, 28, Colors.WHITE)
         super.render(context, mouseX, mouseY, delta)
     }
 
@@ -114,11 +117,13 @@ class MainScreen(private val parent: Screen): Screen(Text.literal("Music Packs")
                     packName.nameWithoutExtension == file.nameWithoutExtension && file.extension == "new" }
         }
 
-        private val OPEN_MUSIC_PACKS_TEXT = Text.literal("Open Pack Folder")
-        private val CREATE_PACK_TEXT = Text.literal("Create a new music pack")
-        private val REFRESH_TEXT = Text.literal("Refresh")
-        private val EDIT_TEXT = Text.literal("Edit Pack")
-        private val WIKI_TEXT = Text.literal("Open Wiki")
-        private val OPTIONS_TEXT = Text.literal("Options")
+        private val OPEN_MUSIC_PACKS_TEXT = Text.translatableWithFallback(
+            "trueadaptivemusic.open_pack_folder", "Open Pack Folder")
+        private val CREATE_PACK_TEXT = Text.translatableWithFallback(
+            "trueadaptivemusic.create_pack", "Create a new music pack")
+        private val REFRESH_TEXT = Text.translatableWithFallback("trueadaptivemusic.refresh", "Refresh")
+        private val EDIT_TEXT = Text.translatableWithFallback("trueadaptivemusic.edit_pack", "Edit Pack")
+        private val WIKI_TEXT = Text.translatableWithFallback("trueadaptivemusic.open_wiki", "Open Wiki")
+        private val OPTIONS_TEXT = Text.translatableWithFallback("trueadaptivemusic.options", "Options")
     }
 }

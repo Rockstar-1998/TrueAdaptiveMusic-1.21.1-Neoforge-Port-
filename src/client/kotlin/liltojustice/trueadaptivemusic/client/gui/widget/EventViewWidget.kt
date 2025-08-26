@@ -22,7 +22,7 @@ class EventViewWidget(
     y: Int = 0)
     : ContainerWidget(
     width, height, "Event View", true, false, true, true, x, y) {
-    private val eventTypeNameOptions = MusicEvent.getTypeNames()
+    private val eventTypeNameOptions = TAMClient.eventRegistry.getAllNames()
     private var selectedEventTypeName: String = eventTypeNameOptions.firstOrNull() ?: ""
     private var requiredEventArgs = listOf<KParameter>()
     private var eventArgs = mutableListOf<Any?>()
@@ -64,7 +64,7 @@ class EventViewWidget(
             addWidgetFromRender(
                 {
                     ClickableTextWidget(
-                        "Delete",
+                        Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                         onClick = {
                             exit(null)
                         }
@@ -86,7 +86,7 @@ class EventViewWidget(
                     eventTypeNameOptions,
                     { typeName ->  setSelectedEventTypeName(typeName) },
                     width / 2,
-                    "Type",
+                    Text.translatableWithFallback("trueadaptivemusic.type", "Type").string,
                     startingOption = selectedEventTypeName)
             },
             "eventTypeChoice",
@@ -98,7 +98,8 @@ class EventViewWidget(
                     listOf(),
                     width,
                     { selected -> selectedMusicPaths = selected.toMutableList() },
-                    "Music Choice",
+                    Text.translatableWithFallback(
+                        "trueadaptivemusic.music_choice", "Music Choice").string,
                     {
                         musicPack.getEditPackAssets().map { (assetName, _) -> assetName }.toMutableSet()
                             .union(
@@ -106,7 +107,8 @@ class EventViewWidget(
                                     .map { id -> id.toString() }
                                     .filter { path -> path.contains("music.") }).toList()
                     },
-                    "Select a track",
+                    Text.translatableWithFallback(
+                        "trueadaptivemusic.select_track", "Select a track").string,
                     selectedMusicPaths,
                     onHoverOption = { option ->
                         TAMClient.playSoundNow(option.let { MusicPack.toPlayableSound(assets, it) }) })
@@ -121,7 +123,7 @@ class EventViewWidget(
 
         requiredEventArgs.forEach { arg ->
             addWidgetFromRender(
-                { InputWidgetMaker.makeWidget(screen!!, eventArgs, arg) },
+                { TAMClient.makeInputWidget(screen!!, eventArgs, arg) },
                 "eventArg: ${arg.name ?: arg.index}"
             )
         }
@@ -132,9 +134,12 @@ class EventViewWidget(
                     "Save",
                     onClick = {
                         assets = musicPack.getEditPackAssets()
-                        val newEvent = MusicEvent.initializeFromArgs(selectedEventTypeName, *eventArgs.filterNotNull().toTypedArray())
-                        newEvent.playableSounds =
-                            selectedMusicPaths.mapNotNull { path -> MusicPack.toPlayableSound(assets, path) }
+                        val newEvent = TAMClient.eventFactory
+                            .fromArgs(
+                                selectedEventTypeName,
+                                selectedMusicPaths
+                                    .mapNotNull { path -> MusicPack.toPlayableSound(assets, path) },
+                                *eventArgs.filterNotNull().toTypedArray())
 
                         exit(newEvent)
                     })
@@ -146,7 +151,7 @@ class EventViewWidget(
             addWidgetFromRender(
                 {
                     ClickableTextWidget(
-                        "Delete",
+                        Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                         onClick = {
                             exit(null)
                         }
@@ -171,7 +176,7 @@ class EventViewWidget(
         }
 
         selectedEventTypeName = typeName
-        requiredEventArgs = MusicEvent.getRequiredArgsFromTypeName(typeName)
+        requiredEventArgs = TAMClient.eventFactory.getRequiredArgs(typeName)
         eventArgs = requiredEventArgs.map { null }.toMutableList()
         clearWidgetsFromRender()
     }
@@ -188,6 +193,9 @@ class EventViewWidget(
 
     companion object {
         private val MISSING_ARGS_TOOLTIP =
-            Tooltip.of(Text.literal("At least one required parameter for this type is missing."))
+            Tooltip.of(
+                Text.translatableWithFallback(
+                    "trueadaptivemusic.missing_parameter",
+                    "At least one required parameter for this type is missing."))
     }
 }

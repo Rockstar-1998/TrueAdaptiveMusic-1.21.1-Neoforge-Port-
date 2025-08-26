@@ -2,10 +2,12 @@ package liltojustice.trueadaptivemusic.client.music
 
 import liltojustice.trueadaptivemusic.Logger
 import liltojustice.trueadaptivemusic.client.InvokeMusicEventCallback
+import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.sound.VolumeManager
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSound
 import liltojustice.trueadaptivemusic.client.sound.resumeInstance
+import liltojustice.trueadaptivemusic.client.trigger.event.types.OnEnterPredicateEvent
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.option.SimpleOption
@@ -25,7 +27,8 @@ class MusicManager(
     private var oldMusicPredicateId: String = ""
     private var currentSoundInstance: SoundInstance? = null
     private var oldSoundInstance: SoundInstance? = null
-    private var musicVolumeOption: SimpleOption<Double> = client.options.getSoundVolumeOption(SoundCategory.MUSIC)
+    private var musicVolumeOption: SimpleOption<Double> =
+        client.options.getSoundVolumeOption(SoundCategory.MUSIC)
     private val volumeManager = VolumeManager(client.soundManager, musicVolumeOption)
     private var onDemandSound: PlayableSound? = null
     private var onDemandSoundInstance: SoundInstance? = null
@@ -37,11 +40,13 @@ class MusicManager(
     private var shouldResume = false
     private var activeEvents: List<MusicEvent> = emptyList()
     private var keepBackground = false
+    private var pauseDone = false
 
     init {
         InvokeMusicEventCallback.EVENT.register { eventType, args ->
             activeEvents.firstOrNull { event ->
-                eventType == event.getTypeName() && runCatching { event.validate(*args) }.getOrNull() == true }
+                eventType == event.getTypeName()
+                        && runCatching { event.validate(*args) }.getOrNull() == true }
                 ?.let { event ->
                     event.playableSounds.randomOrNull()?.let {
                         playNow(it, true)
@@ -73,7 +78,8 @@ class MusicManager(
 
         if (sound == null) {
             onDemandSoundInstance?.let {
-                volumeManager.startFade(it, PLAY_NOW_FADE_TICKS, 0F, true)
+                volumeManager.startFade(
+                    it, PLAY_NOW_FADE_TICKS, 0F, true)
             }
             onDemandSound = null
             onDemandSoundInstance = null
@@ -98,6 +104,22 @@ class MusicManager(
     }
 
     fun tick() {
+        if (client.isPaused && !pauseDone) {
+            currentSoundInstance
+                ?.let {
+                    volumeManager.startFade(
+                        it, PAUSE_FADE_TICKS, PAUSE_VOLUME) }
+            pauseDone = true
+        }
+        else if (!client.isPaused && pauseDone) {
+            currentSoundInstance
+                ?.let {
+                    volumeManager.startFade(
+                        it, PAUSE_FADE_TICKS, 1F) }
+
+            pauseDone = false
+        }
+
         volumeManager.tick()
 
         if (onDemandSound != null) {
@@ -155,6 +177,11 @@ class MusicManager(
             return
         }
 
+        if (identifier != currentMusicPredicateId
+            && predicateResult?.events?.any { event -> event is OnEnterPredicateEvent } ?: false) {
+            MusicEvent.invokeMusicEvent(TAMClient.eventRegistry[OnEnterPredicateEvent::class])
+        }
+
         shouldResume = oldMusicPredicateId == identifier
         oldMusicPredicateId =
             if (identifier != currentMusicPredicateId)
@@ -163,10 +190,17 @@ class MusicManager(
                 oldMusicPredicateId
         currentMusicPredicateId = identifier
         startNewMusic(nextMusic)
+
+        if (pauseDone) {
+            currentSoundInstance
+                ?.let {
+                    volumeManager.startFade(
+                        it, PAUSE_FADE_TICKS, PAUSE_VOLUME) }
+        }
     }
 
-    fun hasActiveEvent(eventName: String): Boolean {
-        return activeEvents.any { event -> event.getTypeName() == eventName }
+    fun hasSoundInstance(instance: SoundInstance): Boolean {
+        return currentSoundInstance === instance || oldSoundInstance === instance || onDemandSoundInstance === instance
     }
 
     private fun shouldPlay(music: PlayableSound?, identifier: String): Boolean {
@@ -178,7 +212,11 @@ class MusicManager(
         if (newMusic == null)
         {
             if (isPlaying(currentSoundInstance)) {
-                volumeManager.startFade(currentSoundInstance!!, REGULAR_FADE_TICKS, 0F, true)
+                volumeManager.startFade(
+                    currentSoundInstance!!,
+                    REGULAR_FADE_TICKS,
+                    0F,
+                    true)
                 currentSoundInstance = null
             }
 
@@ -234,7 +272,9 @@ class MusicManager(
 
     private fun beginCrossfade(newSoundInstance: SoundInstance) {
         if (oldSoundInstance != newSoundInstance) {
-            oldSoundInstance?.let { volumeManager.startFade(it, REGULAR_FADE_TICKS, 0F, true) }
+            oldSoundInstance?.let {
+                volumeManager.startFade(
+                    it, REGULAR_FADE_TICKS, 0F, true) }
         }
 
         oldSoundInstance = currentSoundInstance
@@ -253,7 +293,8 @@ class MusicManager(
 
         if (!keepBackground) {
             volumeManager.setInstanceVolume(currentSoundInstance!!, 0F)
-            volumeManager.startFade(currentSoundInstance!!, REGULAR_FADE_TICKS, 1F)
+            volumeManager.startFade(
+                currentSoundInstance!!, REGULAR_FADE_TICKS, 1F)
         }
 
         volumeManager.startFade(oldSoundInstance!!, REGULAR_FADE_TICKS, 0F)
@@ -278,6 +319,8 @@ class MusicManager(
     companion object {
         private const val REGULAR_FADE_TICKS = 50
         private const val PLAY_NOW_FADE_TICKS = 10
+        private const val PAUSE_FADE_TICKS = 5
         private const val BACKGROUND_VOLUME = 0.2F
+        private const val PAUSE_VOLUME = 0.2F
     }
 }

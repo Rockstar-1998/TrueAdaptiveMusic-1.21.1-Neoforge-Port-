@@ -12,12 +12,12 @@ class BossPredicate(private val bosses: List<EntityTypeIdentifier>): MusicPredic
     override fun test(client: MinecraftClient): Boolean {
         return client.inGameHud.bossBarHud.bossBars.values.any { bossBar ->
             val bossName = (bossBar.name.content as? TranslatableTextContent)?.key ?: return@any false
-            bosses.isEmpty() || bosses.any { boss -> toTranslationKey(bossName) == boss.toTranslationKey() }
+            bosses.isEmpty() || bosses.any { boss -> bossName == boss.toTranslationKey("entity") }
         }
     }
 
     override fun toJson(): JsonObject {
-        val result = super.toJson()
+        val result = JsonObject()
         val jsonBosses = JsonArray()
         bosses.forEach { boss -> jsonBosses.add(boss.toString()) }
         result.add("id", jsonBosses)
@@ -26,18 +26,12 @@ class BossPredicate(private val bosses: List<EntityTypeIdentifier>): MusicPredic
     }
 
     companion object: MusicPredicateCompanion<BossPredicate> {
-        override fun getTypeName(): String { return "boss" }
-
         override fun fromJson(json: JsonObject): BossPredicate {
             return BossPredicate(
                 if (JsonHelper.hasArray(json, "id"))
                     JsonHelper.getArray(json, "id").map { element -> EntityTypeIdentifier(element.asString) }
                 else
                     listOf(EntityTypeIdentifier(JsonHelper.getString(json, "id"))))
-        }
-
-        fun toTranslationKey(textKey: String): String {
-            return textKey.split(".").drop(1).joinToString(".")
         }
     }
 }

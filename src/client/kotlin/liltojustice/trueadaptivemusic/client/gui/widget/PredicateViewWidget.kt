@@ -7,7 +7,6 @@ import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.music.MusicPack
 import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
 import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
-import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
 import net.minecraft.client.gui.DrawContext
@@ -29,9 +28,18 @@ class PredicateViewWidget(
     x: Int = 0,
     y: Int = 0)
     : ContainerWidget(
-    width, height, "Predicate View", true, false, true, true, x, y) {
-    private val predicateTypeNameOptions = MusicPredicate.getTypeNames()
-        .filter { typeName -> typeName != RootPredicate.getTypeName() }
+    width,
+    height,
+    Text.translatableWithFallback(
+        "trueadaptivemusic.predicate_view", "Predicate View").string,
+    true,
+    false,
+    true,
+    true,
+    x,
+    y) {
+    private val predicateTypeNameOptions = TAMClient.predicateRegistry.getAllNames()
+        .filter { typeName -> typeName != TAMClient.predicateRegistry[RootPredicate::class] }
     private var selectedPredicateTypeName: String = predicateTypeNameOptions.firstOrNull() ?: ""
     private var requiredPredicateArgs = listOf<KParameter>()
     private var predicateArgs = mutableListOf<Any?>()
@@ -67,7 +75,8 @@ class PredicateViewWidget(
         else {
             drawCenteredText(
                 context,
-                "Select or add a predicate",
+                Text.translatableWithFallback(
+                    "trueadaptivemusic.select_add_predicate", "Select or add a predicate").string,
                 0,
                 width / 2)
         }
@@ -77,7 +86,8 @@ class PredicateViewWidget(
         clearWidgetsFromRender()
         setSelectedPredicateTypeName(node.predicate.getTypeName())
         selectedNode = node
-        selectedMusicPaths = selectedNode!!.playableSounds.map { sound -> sound.getSoundName() }.toMutableList()
+        selectedMusicPaths = selectedNode!!.predicate.playableSounds.map { sound -> sound.getSoundName() }
+            .toMutableList()
         newPredicateParent = null
         nodeArgs = node.parameters.constructorParams().toMutableList()
         events = node.events.toMutableList()
@@ -106,7 +116,7 @@ class PredicateViewWidget(
 
     private fun setSelectedPredicateTypeName(typeName: String) {
         selectedPredicateTypeName = typeName
-        requiredPredicateArgs = MusicPredicate.getRequiredArgsFromTypeName(typeName)
+        requiredPredicateArgs = TAMClient.predicateFactory.getRequiredArgs(typeName)
         predicateArgs = selectedNode?.let {
             if (it.predicate.getTypeName() == selectedPredicateTypeName)
                 it.predicate.getTriggerParams().map { param -> param.value }.toMutableList()
@@ -130,7 +140,7 @@ class PredicateViewWidget(
                         predicateTypeNameOptions,
                         { typeName ->  setSelectedPredicateTypeName(typeName) },
                         width,
-                        "Type",
+                        Text.translatableWithFallback("trueadaptivemusic.type", "Type").string,
                         startingOption = selectedPredicateTypeName)
                 },
                 "predicateTypeChoice",
@@ -143,7 +153,8 @@ class PredicateViewWidget(
                     listOf(),
                     width,
                     { selected -> selectedMusicPaths = selected.toMutableList() },
-                    "Music Choice",
+                    Text.translatableWithFallback(
+                        "trueadaptivemusic.music_choice", "Music Choice").string,
                     {
                         musicPack.getEditPackAssets().map { (assetName, _) -> assetName }.toMutableSet()
                         .union(
@@ -151,7 +162,8 @@ class PredicateViewWidget(
                                 .map { id -> id.toString() }
                                 .filter { path -> path.contains("music.") }).toList()
                     },
-                    "Select a track",
+                    Text.translatableWithFallback(
+                        "trueadaptivemusic.select_track", "Select a track").string,
                     selectedMusicPaths,
                     onHoverOption = { option ->
                         TAMClient.playSoundNow(option.let { MusicPack.toPlayableSound(assets, it) }) })
@@ -166,14 +178,14 @@ class PredicateViewWidget(
 
         requiredPredicateArgs.forEach { arg ->
             addWidgetFromRender(
-                { InputWidgetMaker.makeWidget(screen!!, predicateArgs, arg) },
+                { TAMClient.makeInputWidget(screen!!, predicateArgs, arg) },
                 "predicateArg: ${arg.name ?: arg.index}"
             )
         }
 
         requiredNodeArgs.forEach { arg ->
             addWidgetFromRender(
-                { InputWidgetMaker.makeWidget(screen!!, nodeArgs, arg) },
+                { TAMClient.makeInputWidget(screen!!, nodeArgs, arg) },
                 "nodeArg: ${arg.name ?: arg.index}"
             )
         }
@@ -181,7 +193,8 @@ class PredicateViewWidget(
         addWidgetFromRender({ EmptyClickableWidget() }, "empty")
 
         addWidgetFromRender({
-            val newWidget = ClickableTextWidget("Events:")
+            val newWidget = ClickableTextWidget(
+                "${Text.translatableWithFallback("trueadaptivemusic.events", "Events").string}:")
             newWidget.active = false
             newWidget
         }, "events")
@@ -210,7 +223,7 @@ class PredicateViewWidget(
 
         addWidgetFromRender(
             { ClickableTextWidget(
-                "+ Add",
+                "+ ${Text.translatableWithFallback("trueadaptivemusic.add", "Add").string}",
                 onClick = {
                     selectedEvent = null
                     onEventClick(null) },
@@ -222,18 +235,20 @@ class PredicateViewWidget(
         val saveWidget = addWidgetFromRender(
             {
                 ClickableTextWidget(
-                    "Save",
+                    Text.translatableWithFallback("trueadaptivemusic.save", "Save").string,
                     onClick = {
                         assets = musicPack.getEditPackAssets()
                         if (selectedNode != null) {
                             selectedNode!!.predicate =
-                                if (selectedNode!!.predicate.getTypeName() == RootPredicate.getTypeName())
+                                if (selectedNode!!.predicate.getTypeName()
+                                    == TAMClient.predicateRegistry[RootPredicate::class])
                                     selectedNode!!.predicate
-                                else MusicPredicate.initializeFromArgs(
-                                    selectedPredicateTypeName, *predicateArgs.filterNotNull().toTypedArray())
+                                else TAMClient.predicateFactory.fromArgs(
+                                    selectedPredicateTypeName,
+                                    selectedMusicPaths
+                                        .mapNotNull { path -> MusicPack.toPlayableSound(assets, path) },
+                                    *predicateArgs.filterNotNull().toTypedArray())
                             selectedNode!!.events = events
-                            selectedNode!!.playableSounds = selectedMusicPaths
-                                .mapNotNull { path -> MusicPack.toPlayableSound(assets, path) }
                             selectedNode!!.parameters =
                                 MusicPredicateTree.Node.Parameters.initializeFromArgs(
                                     *nodeArgs.filterNotNull().toTypedArray())
@@ -244,7 +259,8 @@ class PredicateViewWidget(
                                 nodeArgs.filterNotNull(),
                                 predicateArgs.filterNotNull(),
                                 events,
-                                selectedMusicPaths.mapNotNull { path -> MusicPack.toPlayableSound(assets, path) })
+                                selectedMusicPaths.mapNotNull {
+                                    path -> MusicPack.toPlayableSound(assets, path) })
                         }
 
                         save()
@@ -257,7 +273,7 @@ class PredicateViewWidget(
             addWidgetFromRender(
                 {
                     ClickableTextWidget(
-                        "Delete",
+                        Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                         onClick = {
                             selectedNode?.orphan()
                             save()
@@ -281,7 +297,7 @@ class PredicateViewWidget(
         addWidgetFromRender(
             {
                 ClickableTextWidget(
-                    "Delete",
+                    Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                     onClick = {
                         selectedNode?.orphan()
                         save()
@@ -306,6 +322,9 @@ class PredicateViewWidget(
 
     companion object {
         private val MISSING_ARGS_TOOLTIP =
-            Tooltip.of(Text.literal("At least one required parameter for this type is missing."))
+            Tooltip.of(
+                Text.translatableWithFallback(
+                    "trueadaptivemusic.missing_parameter",
+                    "At least one required parameter for this type is missing."))
     }
 }

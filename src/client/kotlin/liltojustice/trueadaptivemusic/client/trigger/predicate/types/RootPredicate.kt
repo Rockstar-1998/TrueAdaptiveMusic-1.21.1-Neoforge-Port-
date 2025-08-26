@@ -7,9 +7,11 @@ import net.minecraft.client.MinecraftClient
 class RootPredicate(): MusicPredicate() {
     override fun test(client: MinecraftClient): Boolean { return true }
 
-    companion object: MusicPredicateCompanion<RootPredicate> {
-        override fun getTypeName(): String { return "root" }
+    override fun getTickRate(): Int {
+        return 1
+    }
 
+    companion object: MusicPredicateCompanion<RootPredicate> {
         override fun fromJson(json: JsonObject): RootPredicate { return RootPredicate() }
     }
 }
