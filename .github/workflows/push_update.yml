@@ -40,7 +40,7 @@ jobs:
           regex_prefix="origin\/versions\/"
           branches=$(git branch -r | tr -d ' '); while read -r line; do
                   if [[ "$line" =~ $regex_prefix.* ]]; then
-                          branch_name="${line:${#regex_prefix}-1}-update-${{ github.event.inputs.update_version }}"
+                          branch_name="${line:${#regex_prefix}-2}-update-${{ github.event.inputs.update_version }}"
                           git checkout -b $branch_name
                           git am --reject patch.patch
                           git push -u origin $branch_name
