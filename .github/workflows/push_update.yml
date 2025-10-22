@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       update_version:
-        description: 'Version string e.g. 1.1'
+        description: 'Mod version string e.g. 1.1'
         required: true
         type: string
 
@@ -26,7 +26,7 @@ jobs:
           git config user.email "LilTOJustice@users.noreply.github.com"
       - name: Update repo mod version
         run: |
-          sed -i "s/VERSION: \'.*/VERSION: \'${{ github.event.inputs.update_version }}\'/g" .github/workflows/publish.yml
+          sed -i "s/VERSION: '.*/VERSION: '${{ github.event.inputs.update_version }}\'/g" .github/workflows/publish.yml
           sed -i "s/mod_version=.*/mod_version=${{ github.event.inputs.update_version }}/g" gradle.properties
           git commit -a
           git push
