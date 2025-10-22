@@ -1,4 +1,4 @@
-name: Push update to all minecraft version branches
+name: Update all Minecraft versions
 
 on:
   workflow_dispatch:
