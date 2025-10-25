@@ -43,7 +43,7 @@ jobs:
                   if [[ "$line" =~ $regex_prefix.* ]]; then
                           branch_name="${line:${#regex_prefix}-2}-update-${{ github.event.inputs.update_version }}"
                           git checkout -b $branch_name
-                          git am --reject patch.patch
+                          git apply --reject patch.patch
                           git push -u origin $branch_name
                           gh pr create --base master
                           count=$((count + 1))
