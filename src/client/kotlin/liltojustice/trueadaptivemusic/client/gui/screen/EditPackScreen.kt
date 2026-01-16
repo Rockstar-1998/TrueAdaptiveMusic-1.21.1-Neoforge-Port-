@@ -25,7 +25,7 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
     private lateinit var predicateViewWidget: PredicateViewWidget
     private lateinit var packStructureWidget: PackStructureWidget
     private lateinit var eventViewWidget: EventViewWidget
-    private lateinit var saveButtonWidget: IconButtonWidget
+    private lateinit var saveButtonWidget: TextIconButtonWidget
     private lateinit var closeButtonWidget: ButtonWidget
     private lateinit var openAssetsFolderButtonWidget: ButtonWidget
     private var selectedEvent: MusicEvent? = null
@@ -35,22 +35,19 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
 
     private fun initPack() {
         TAMClient.playSoundNow(null)
-        val newPath = musicPack.initEdit(musicPack)
-        TAMClient.musicPack = MusicPack.fromFile(newPath)
+        TAMClient.musicPack = MusicPack.fromFile(musicPack.initEdit(musicPack))
     }
 
     override fun init() {
         initPack()
 
-        saveButtonWidget = IconButtonWidget.Builder(SAVE_BUTTON_TEXT, CHECKMARK) {
+        saveButtonWidget = TextIconButtonWidget.Builder(SAVE_BUTTON_TEXT, {
             TAMClient.musicPack = null
             val path = musicPack.save()
             TAMClient.musicPack = MusicPack.fromFile(path)
             this.close()
-        }
-            .iconSize(9, 8)
-            .textureSize(9, 8)
-            .xyOffset(32, 6)
+        }, false)
+            .texture(CHECKMARK, 9, 8)
             .build()
 
         closeButtonWidget = ButtonWidget.Builder(CLOSE_BUTTON_TEXT) {
@@ -67,8 +64,8 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
             getContainerWidth(),
             getContainerHeight(),
             musicPack,
-            {
-                initPack()
+            { target ->
+                packStructureWidget.setNode(target)
                 packStructureWidget.initPredicateWidgets()
             },
             { event -> switchToEventView(event) },
@@ -77,6 +74,9 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
             getContainerWidth(),
             getContainerHeight(),
             musicPack,
+            {
+                packStructureWidget.initPredicateWidgets()
+            },
             { node ->
                 predicateViewWidget.setEditExistingNode(node)
                 switchToPredicateView()
@@ -89,9 +89,12 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
             getContainerWidth(),
             getContainerHeight(),
             musicPack,
-            { newEvent ->
-                predicateViewWidget.onEventModeExit(newEvent)
-                switchToPredicateView() }
+            { newEvent, exit ->
+                predicateViewWidget.onEventModeSave(newEvent, exit)
+                if (exit) {
+                    switchToPredicateView()
+                }
+            }
         )
 
         addDrawableChild(saveButtonWidget)
@@ -128,19 +131,19 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
     }
 
     override fun close() {
+        initPack()
         if (parent is MainScreen) {
             parent.reload()
         }
 
-        TAMClient.refreshCurrentMusicPack()
         client?.setScreen(parent)
     }
 
     override fun render(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
-        renderBackground(context)
+        renderBackground(context, mouseX, mouseY, delta)
+        super.render(context, mouseX, mouseY, delta)
         context?.drawCenteredTextWithShadow(
             this.textRenderer, this.title, this.width / 2, 22, Colors.WHITE)
-        super.render(context, mouseX, mouseY, delta)
     }
 
     private fun positionContainers() {
@@ -192,7 +195,7 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
     }
 
     companion object {
-        private val CHECKMARK: Identifier = Identifier("minecraft", "textures/gui/checkmark.png")
+        private val CHECKMARK: Identifier = Identifier.ofVanilla("icon/checkmark")
         private const val TOP_MARGIN = 32
         private const val BOTTOM_MARGIN = TOP_MARGIN / 4
         private const val LEFT_MARGIN = TOP_MARGIN / 4
@@ -200,7 +203,7 @@ class EditPackScreen(private val parent: Screen, private val musicPack: MusicPac
         private val OPEN_ASSETS_TEXT = Text.translatableWithFallback(
             "trueadaptivemusic.show_assets", "Show Assets")
         private val SAVE_BUTTON_TEXT = Text.translatableWithFallback(
-            "trueadaptivemusic.save_and_zip", "Save and Zip")
+            "trueadaptivemusic.save_and_zip", "Export")
         private val CLOSE_BUTTON_TEXT = Text.translatableWithFallback("trueadaptivemusic.close", "Close")
     }
 }
