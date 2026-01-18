@@ -1,0 +1,45 @@
+modLoader = "kotlinforforge"
+loaderVersion = "[5,)"
+
+license = "GPL-3.0"
+issueTrackerURL = "https://github.com/LilTOJustice/TrueAdaptiveMusic/issues"
+
+[[mods]]
+modId = "trueadaptivemusic"
+version = "${version}"
+displayName = "True Adaptive Music"
+description = '''Experience dynamic music that adapts to what happens in Minecraft!'''
+logoFile = "assets/trueadaptivemusic/icon.png"
+authors = "LilTOJustice, Yuqiu (NeoForge Port)"
+displayURL = "https://liltojustice.github.io/TrueAdaptiveMusic/"
+
+[[dependencies.trueadaptivemusic]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.trueadaptivemusic]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.22)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.trueadaptivemusic]]
+modId = "kotlinforforge"
+type = "required"
+versionRange = "[5.0.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.trueadaptivemusic]]
+modId = "forgified_fabric_api"
+type = "required"
+versionRange = "[0.100.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[mixins]]
+config = "trueadaptivemusic.mixins.json"

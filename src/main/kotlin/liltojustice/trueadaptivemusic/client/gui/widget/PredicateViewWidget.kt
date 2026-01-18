@@ -1,0 +1,320 @@
+package liltojustice.trueadaptivemusic.client.gui.widget
+
+import liltojustice.trueadaptivemusic.client.TAMClient
+import liltojustice.trueadaptivemusic.client.gui.extensions.getTriggerTooltipText
+import liltojustice.trueadaptivemusic.client.gui.widget.utility.*
+import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
+import liltojustice.trueadaptivemusic.client.music.MusicPack
+import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
+import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
+import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
+import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateTree
+import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.core.registries.Registries
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
+import kotlin.reflect.KParameter
+import kotlin.reflect.full.primaryConstructor
+
+class PredicateViewWidget(
+    width: Int,
+    height: Int,
+    private val musicPack: MusicPack,
+    private val onChangesSaved: () -> Unit,
+    private val onEventClick: (event: MusicEvent?) -> Unit,
+    private val inEventView: () -> Boolean,
+    x: Int = 0,
+    y: Int = 0)
+    : ContainerWidget(
+    width,
+    height,
+    Component.literal("Predicate View").string,
+    true,
+    false,
+    true,
+    true,
+    x,
+    y) {
+    private val predicateTypeNameOptions = TAMClient.predicateRegistry.getAllNames()
+        .filter { typeName -> typeName != TAMClient.predicateRegistry[RootPredicate::class] }
+    private var selectedPredicateTypeName: String = predicateTypeNameOptions.firstOrNull() ?: ""
+    private var requiredPredicateArgs = listOf<KParameter>()
+    private var predicateArgs = mutableListOf<Any?>()
+    private val requiredPredicateParams = MusicPredicate.Parameters::class.primaryConstructor?.parameters ?: listOf()
+    private var predicateParams: MutableList<Any?> = requiredPredicateParams.map { null }.toMutableList()
+    private var events = mutableListOf<MusicEvent>()
+    private var selectedEvent: MusicEvent? = null
+    private var selectedNode: MusicPredicateTree.Node? = null
+    private var newPredicateParent: MusicPredicateTree.Node? = null
+    private var selectedMusicPaths = mutableListOf<String>()
+    private var assets = musicPack.getEditPackAssets()
+
+    override fun updateWidgetNarration(narrationOutput: NarrationElementOutput) {
+    }
+
+    override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (isMouseOver(mouseX, mouseY)) {
+            screen?.focused = null
+        }
+
+        return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
+        super.renderWidget(context, mouseX, mouseY, delta)
+        if (!visible) {
+            return
+        }
+
+        if (newPredicateParent != null || selectedNode != null) {
+            renderEditMode(mouseX, mouseY)
+        }
+        else {
+            drawCenteredText(
+                context,
+                Component.literal("Select or add a predicate").string,
+                0,
+                width / 2)
+        }
+    }
+
+    fun setEditExistingNode(node: MusicPredicateTree.Node) {
+        clearWidgetsFromRender()
+        setSelectedPredicateTypeName(node.predicate.getTypeName())
+        selectedNode = node
+        selectedMusicPaths = selectedNode!!.predicate.playableSounds.map { sound -> sound.getSoundName() }
+            .toMutableList()
+        newPredicateParent = null
+        predicateParams = node.predicate.parameters.constructorParams().toMutableList()
+        events = node.events.toMutableList()
+        resetScrolling()
+    }
+
+    fun setCreateNewNode(parent: MusicPredicateTree.Node) {
+        clearWidgetsFromRender()
+        selectedPredicateTypeName = ""
+        selectedNode = null
+        selectedMusicPaths = mutableListOf()
+        newPredicateParent = parent
+        requiredPredicateArgs = listOf()
+        predicateArgs = mutableListOf()
+        predicateParams.replaceAll { null }
+        events = mutableListOf()
+        resetScrolling()
+    }
+
+    fun onEventModeExit(newEvent: MusicEvent?) {
+        events.remove(selectedEvent)
+        newEvent?.let { events.add(it) }
+        selectedEvent = null
+        clearWidgetsFromRender()
+    }
+
+    private fun setSelectedPredicateTypeName(typeName: String) {
+        selectedPredicateTypeName = typeName
+        requiredPredicateArgs = TAMClient.predicateFactory.getRequiredArgs(typeName)
+        predicateArgs = selectedNode?.let {
+            if (it.predicate.getTypeName() == selectedPredicateTypeName)
+                it.predicate.getTriggerArgs().map { arg -> arg.value }.toMutableList()
+            else
+                null
+        } ?: requiredPredicateArgs.map { null }.toMutableList()
+
+        clearWidgetsFromRender { childWidget -> childWidget.id in arrayOf("predicateTypeChoice", "musicChoice") }
+    }
+
+    private fun renderEditMode(mouseX: Int, mouseY: Int) {
+        if (selectedNode?.predicate is ErrorPredicate) {
+            renderErrorMode()
+            return
+        }
+
+        if (selectedNode?.predicate !is RootPredicate) {
+            addWidgetFromRender(
+                {
+                    DropdownWidget(
+                        predicateTypeNameOptions,
+                        { typeName ->  setSelectedPredicateTypeName(typeName) },
+                        width,
+                        Component.literal("Type").string,
+                        startingOption = selectedPredicateTypeName)
+                },
+                "predicateTypeChoice",
+                row = 1)
+        }
+
+        val musicDropdownWidget = addWidgetFromRender(
+            {
+                MultiSelectDropdownWidget(
+                    listOf(),
+                    width,
+                    { selected -> selectedMusicPaths = selected.toMutableList() },
+                    Component.literal("Music Choice").string,
+                    {
+                        musicPack.getEditPackAssets().map { (assetName, _) -> assetName }.toMutableSet()
+                        .union(
+                            BuiltInRegistries.SOUND_EVENT.keySet()
+                                .map { id -> id.toString() }
+                                .filter { path -> path.contains("music.") }).toList()
+                    },
+                    Component.literal("Select a track").string,
+                    selectedMusicPaths,
+                    onHoverOption = { option ->
+                        TAMClient.playSoundNow(option.let { MusicPack.toPlayableSound(assets, it) }) })
+            },
+            "musicChoice"
+        )
+
+        if (isMouseOver(mouseX.toDouble(), mouseY.toDouble())
+            && !musicDropdownWidget.isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
+            TAMClient.playSoundNow(null)
+        }
+
+        requiredPredicateArgs.forEach { arg ->
+            addWidgetFromRender(
+                { TAMClient.makeInputWidget(screen!!, predicateArgs, arg) },
+                "predicateArg: ${arg.name ?: arg.index}"
+            )
+        }
+
+        requiredPredicateParams.forEach { param ->
+            addWidgetFromRender(
+                { TAMClient.makeInputWidget(screen!!, predicateParams, param) },
+                "predicateParam: ${param.name ?: param.index}"
+            )
+        }
+
+        addWidgetFromRender({ EmptyClickableWidget() }, "empty")
+
+        addWidgetFromRender({
+            val newWidget = ClickableTextWidget(
+                "${Component.literal("Events").string}:")
+            newWidget.active = false
+            newWidget
+        }, "events")
+
+        events.forEach { event ->
+            addWidgetFromRender(
+                { val eventWidget = ClickableTextWidget(
+                    event.getTypeName(),
+                    onClick = {
+                        if (selectedEvent === event) {
+                            return@ClickableTextWidget
+                        }
+
+                        selectedEvent = event
+                        onEventClick(event) },
+                    isSelected = { selectedEvent == event })
+                    eventWidget.tooltip = Tooltip.create(event.getTriggerTooltipText())
+                    if (event is ErrorEvent) {
+                        eventWidget.color = CommonColors.RED
+                    }
+
+                    eventWidget
+                },
+                "event: ${event.hashCode()}")
+        }
+
+        addWidgetFromRender(
+            { ClickableTextWidget(
+                "+ ${Component.literal("Add").string}",
+                onClick = {
+                    selectedEvent = null
+                    onEventClick(null) },
+                isSelected = { selectedEvent == null && inEventView() }) },
+            "Add Event")
+
+        addWidgetFromRender({ EmptyClickableWidget() }, "empty")
+
+        val saveWidget = addWidgetFromRender(
+            {
+                ClickableTextWidget(
+                    Component.literal("Save").string,
+                    onClick = {
+                        assets = musicPack.getEditPackAssets()
+                        if (selectedNode != null) {
+                            selectedNode!!.predicate =
+                                TAMClient.predicateFactory.fromArgs(
+                                    selectedPredicateTypeName,
+                                    selectedMusicPaths
+                                        .mapNotNull { path -> MusicPack.toPlayableSound(assets, path) },
+                                    predicateParams.filterNotNull(), predicateArgs.filterNotNull())
+                            selectedNode!!.events = events
+                        }
+                        else {
+                            newPredicateParent?.newChild(
+                                selectedPredicateTypeName,
+                                predicateParams.filterNotNull(),
+                                predicateArgs.filterNotNull(),
+                                events,
+                                selectedMusicPaths.mapNotNull {
+                                    path -> MusicPack.toPlayableSound(assets, path) })
+                        }
+
+                        save()
+                    })
+            },
+            "Save"
+        ) as ClickableTextWidget
+
+        if (selectedNode?.parent != null) {
+            addWidgetFromRender(
+                {
+                    ClickableTextWidget(
+                        Component.literal("Delete").string,
+                        onClick = {
+                            selectedNode?.orphan()
+                            save()
+                        }
+                    )
+                },
+                "Delete"
+            )
+        }
+
+        saveWidget.active = predicateArgs.filterNotNull().size == requiredPredicateArgs.size
+        saveWidget.color = if (saveWidget.active) CommonColors.WHITE else CommonColors.RED
+        saveWidget.tooltip =
+            if (saveWidget.active)
+                null
+            else
+                MISSING_ARGS_TOOLTIP
+    }
+
+    private fun renderErrorMode() {
+        addWidgetFromRender(
+            {
+                ClickableTextWidget(
+                    Component.literal("Delete").string,
+                    onClick = {
+                        selectedNode?.orphan()
+                        save()
+                    }
+                )
+            },
+            "Delete"
+        )
+    }
+
+    private fun unsetAll() {
+        clearWidgetsFromRender()
+        newPredicateParent = null
+        selectedNode = null
+    }
+
+    private fun save() {
+        musicPack.initRules()
+        onChangesSaved()
+        unsetAll()
+    }
+
+    companion object {
+        private val MISSING_ARGS_TOOLTIP =
+            Tooltip.create(
+                Component.literal("At least one required parameter for this type is missing."))
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "audiofilestream": {
+    "sounds": [
+      {
+        "name": "trueadaptivemusic:empty",
+        "stream": true
+      }
+    ]
+  }
+}

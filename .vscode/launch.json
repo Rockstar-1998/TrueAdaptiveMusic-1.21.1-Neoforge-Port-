@@ -1,0 +1,47 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Client",
+      "presentation": {
+        "group": "Mod Development - TrueAdaptiveMusic",
+        "order": 0
+      },
+      "projectName": "TrueAdaptiveMusic",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\build\\moddev\\clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dtrueadaptivemusic%%D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Server",
+      "presentation": {
+        "group": "Mod Development - TrueAdaptiveMusic",
+        "order": 1
+      },
+      "projectName": "TrueAdaptiveMusic",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\build\\moddev\\serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dtrueadaptivemusic%%D:\\data\\TrueAdaptiveMusic-LilTOJustice-port-1-21-1\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    }
+  ]
+}
