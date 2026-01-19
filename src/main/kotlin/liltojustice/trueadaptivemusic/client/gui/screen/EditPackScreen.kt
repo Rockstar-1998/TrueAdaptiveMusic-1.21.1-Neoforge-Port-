@@ -6,8 +6,8 @@ import liltojustice.trueadaptivemusic.client.gui.widget.EventViewWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.PackStructureWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.PredicateViewWidget
 import liltojustice.trueadaptivemusic.client.music.MusicPack
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.layouts.FrameLayout
 import net.minecraft.client.gui.layouts.GridLayout
@@ -19,7 +19,7 @@ import net.minecraft.util.CommonColors
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.Util
 
-@Environment(EnvType.CLIENT)
+@OnlyIn(Dist.CLIENT)
 class EditPackScreen(private val parent: Screen, private val musicPack: MusicPack)
     : Screen(
     Component.literal("Create/Edit a music pack")) {

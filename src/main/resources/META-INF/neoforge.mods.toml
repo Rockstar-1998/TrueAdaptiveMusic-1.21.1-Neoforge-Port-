@@ -34,12 +34,5 @@ versionRange = "[5.0.0,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.trueadaptivemusic]]
-modId = "forgified_fabric_api"
-type = "required"
-versionRange = "[0.100.0,)"
-ordering = "NONE"
-side = "BOTH"
-
 [[mixins]]
 config = "trueadaptivemusic.mixins.json"

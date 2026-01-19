@@ -47,9 +47,6 @@ neoForge {
 repositories {
     mavenCentral()
     
-    // Forgified Fabric API
-    maven("https://maven.su5ed.dev/releases")
-    
     // Kotlin for Forge
     maven("https://thedarkcolour.github.io/KotlinForForge/")
 }
@@ -57,9 +54,6 @@ repositories {
 dependencies {
     // Kotlin for Forge
     implementation("thedarkcolour:kotlinforforge-neoforge:${project.property("kotlin_forge_version")}")
-    
-    // Forgified Fabric API - provides Fabric API on NeoForge
-    implementation("org.sinytra.forgified-fabric-api:forgified-fabric-api:${project.property("ffapi_version")}")
     
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${project.property("serialization_version")}")

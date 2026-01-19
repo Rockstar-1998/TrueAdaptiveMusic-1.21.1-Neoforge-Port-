@@ -40,7 +40,7 @@ abstract class MusicEvent: MusicTrigger<MusicEvent.Parameters>() {
 
     interface MusicEventCompanion<TSelf>: MusicTriggerCompanion<MusicEvent> where TSelf: MusicEvent {
         fun invokeMusicEvent(eventName: String, vararg eventArgs: Any?) {
-            InvokeMusicEventCallback.EVENT.invoker().invokeMusicEvent(eventName, *eventArgs)
+            InvokeMusicEventCallback.invoke(eventName, *eventArgs)
         }
     }
 }

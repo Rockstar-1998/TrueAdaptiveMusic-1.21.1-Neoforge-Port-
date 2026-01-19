@@ -37,8 +37,9 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.types.StructurePr
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.StructureSetPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.TitleScreenPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.WeatherPredicate
-import net.fabricmc.api.ClientModInitializer
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.minecraft.client.Minecraft
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.client.event.ClientTickEvent
 import net.minecraft.client.gui.components.Tooltip
 import net.minecraft.network.chat.Component
 import net.neoforged.api.distmarker.Dist
@@ -64,8 +65,8 @@ object TrueAdaptiveMusicClientSetup {
     }
 }
 
-class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
-    override fun onInitializeClient() {
+class TrueAdaptiveMusicClientInitializer {
+    fun onInitializeClient() {
         // FFmpeg installation removed - should be installed separately by user if needed
         // The blocking waitFor() was causing the game to hang during initialization
 
@@ -100,9 +101,9 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         TAMClient.registerEvent("on_tutorial_popup", OnTutorialPopupEvent::class)
         TAMClient.registerEvent("on_wake_up", OnWakeUpEvent::class)
 
-        // Register minecraft tick event using FFAPI
-        ClientTickEvents.END_CLIENT_TICK.register { minecraft ->
-            TAMClient.tick(minecraft)
+        // Register minecraft tick event using NeoForge event bus
+        NeoForge.EVENT_BUS.addListener { _: ClientTickEvent.Post ->
+            TAMClient.tick(Minecraft.getInstance())
         }
 
         TAMClient.registerInputWidget(

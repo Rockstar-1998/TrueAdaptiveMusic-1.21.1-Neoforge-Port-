@@ -44,7 +44,7 @@ class MusicManager(
     private var pauseDone = false
 
     init {
-        InvokeMusicEventCallback.EVENT.register { eventType, args ->
+        InvokeMusicEventCallback.register { eventType, args ->
             activeEvents.firstOrNull { event ->
                 eventType == event.getTypeName()
                         && runCatching { event.validate(*args) }.getOrNull() == true }

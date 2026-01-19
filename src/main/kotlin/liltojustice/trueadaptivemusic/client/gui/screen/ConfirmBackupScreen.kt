@@ -1,8 +1,8 @@
 package liltojustice.trueadaptivemusic.client.gui.screen
 
 import liltojustice.trueadaptivemusic.client.music.MusicPack
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.components.Button
@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation
 import java.nio.file.Path
 import kotlin.io.path.*
 
-@Environment(EnvType.CLIENT)
+@OnlyIn(Dist.CLIENT)
 class ConfirmBackupScreen(
     private val parent: Screen, private val backupPath: Path, private val deleteDestination: Screen)
     : Screen(Component.literal("Backup Exists")) {

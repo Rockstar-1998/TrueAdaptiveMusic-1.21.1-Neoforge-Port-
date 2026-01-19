@@ -3,8 +3,8 @@ package liltojustice.trueadaptivemusic.client.gui.screen
 import liltojustice.trueadaptivemusic.Constants
 import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.gui.widget.PackListWidget
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.components.Button
@@ -15,7 +15,7 @@ import net.minecraft.Util
 import java.nio.file.Path
 import kotlin.io.path.*
 
-@Environment(EnvType.CLIENT)
+@OnlyIn(Dist.CLIENT)
 class MainScreen(private val parent: Screen): Screen(
     Component.literal("Music Packs")) {
     private lateinit var createNewPackButton: Button

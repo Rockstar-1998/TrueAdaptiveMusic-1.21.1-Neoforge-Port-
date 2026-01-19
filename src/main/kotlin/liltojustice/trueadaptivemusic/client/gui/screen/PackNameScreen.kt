@@ -2,8 +2,8 @@ package liltojustice.trueadaptivemusic.client.gui.screen
 
 import liltojustice.trueadaptivemusic.Constants
 import liltojustice.trueadaptivemusic.client.music.MusicPack
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.components.EditBox
@@ -14,7 +14,7 @@ import net.minecraft.resources.ResourceLocation
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
-@Environment(EnvType.CLIENT)
+@OnlyIn(Dist.CLIENT)
 class PackNameScreen(private val parent: Screen): Screen(
     Component.literal("Name Your New Pack")) {
     private var packName = ""

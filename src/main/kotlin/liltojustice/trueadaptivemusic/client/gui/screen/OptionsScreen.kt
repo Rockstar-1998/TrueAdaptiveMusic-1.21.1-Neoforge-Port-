@@ -2,14 +2,14 @@ package liltojustice.trueadaptivemusic.client.gui.screen
 
 import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.gui.widget.OptionsViewWidget
-import net.fabricmc.api.EnvType
-import net.fabricmc.api.Environment
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.components.Button
 import net.minecraft.network.chat.Component
 
-@Environment(EnvType.CLIENT)
+@OnlyIn(Dist.CLIENT)
 class OptionsScreen(private val parent: Screen): Screen(
     Component.literal("TrueAdaptiveMusic Options")) {
     private lateinit var optionsViewWidget: OptionsViewWidget
