@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.0.20"
-    kotlin("plugin.serialization") version "2.0.20"
-    id("fabric-loom") version "1.7.1"
+    kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
+    id("net.neoforged.moddev") version "2.0.126"
     id("maven-publish")
 }
 
 version = "${project.property("mod_version") as String}+${project.property("minecraft_version")}"
-group = project.property("maven_group") as String
+group = project.property("mod_group_id") as String
 
 base {
     archivesName.set(project.property("archives_base_name") as String)
@@ -18,75 +18,86 @@ base {
 val targetJavaVersion = 21
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
     withSourcesJar()
 }
 
-loom {
-    splitEnvironmentSourceSets()
+val client by sourceSets.creating {
+    compileClasspath += sourceSets["main"].output + sourceSets["main"].compileClasspath
+    runtimeClasspath += sourceSets["main"].output + sourceSets["main"].runtimeClasspath
+}
 
-    mods {
-        register("trueadaptivemusic") {
-            sourceSet("main")
-            sourceSet("client")
+configurations {
+    val clientImplementation by getting {
+        extendsFrom(implementation.get())
+    }
+    val clientCompileOnly by getting {
+        extendsFrom(compileOnly.get())
+    }
+    val clientRuntimeOnly by getting {
+        extendsFrom(runtimeOnly.get())
+    }
+}
+
+neoForge {
+    version = project.property("neo_version") as String
+
+    runs {
+        create("client") {
+            client()
         }
     }
 
-    accessWidenerPath = file("src/main/resources/trueadaptivemusic.accesswidener")
+    mods {
+        create(project.property("mod_id") as String) {
+            sourceSet(sourceSets["main"])
+            sourceSet(client)
+        }
+    }
 }
 
 repositories {
-    // Add repositories to retrieve artifacts from in here.
-    // You should only use this when depending on other mods because
-    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-    // for more information about repositories.
-
-    maven("https://maven.terraformersmc.com/releases/")
+    maven("https://maven.neoforged.net/releases")
+    maven {
+        name = "Kotlin for Forge"
+        setUrl("https://thedarkcolour.github.io/KotlinForForge/")
+    }
 }
 
 dependencies {
-    // To change the versions see the gradle.properties file
-    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    mappings("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
-    modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-
-    // Fabric API. This is technically optional, but you probably want it anyway.
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
-
-    modApi("com.terraformersmc:modmenu:${project.property("modMenu_version")}")
-
-    implementation(
-        "org.jetbrains.kotlinx:kotlinx-serialization-json:${project.property("serialization_version")}")
-        ?.let { includeInternal(it) }
-    //implementation("org.apache.maven.shared:maven-dependency-analyzer:${project.property("mda_version")}")
-    //    ?.let { includeInternal(it) }
+    implementation("thedarkcolour:kotlinforforge-neoforge:${project.property("kotlinforforge_version")}")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${project.property("serialization_version")}")
 }
 
 tasks.processResources {
     inputs.property("version", project.version)
     inputs.property("minecraft_version", project.property("minecraft_version"))
-    inputs.property("loader_version", project.property("loader_version"))
+    inputs.property("minecraft_version_range", project.property("minecraft_version_range"))
+    inputs.property("neo_version_range", project.property("neo_version_range"))
+    inputs.property("loader_version_range", project.property("loader_version_range"))
+    inputs.property("mod_id", project.property("mod_id"))
+    inputs.property("mod_name", project.property("mod_name"))
+    inputs.property("mod_license", project.property("mod_license"))
+    inputs.property("mod_authors", project.property("mod_authors"))
+    inputs.property("mod_description", project.property("mod_description"))
     filteringCharset = "UTF-8"
 
-    filesMatching("fabric.mod.json") {
+    filesMatching("META-INF/neoforge.mods.toml") {
         expand(
             "version" to project.version,
             "minecraft_version" to project.property("minecraft_version"),
-            "loader_version" to project.property("loader_version"),
-            "kotlin_loader_version" to project.property("kotlin_loader_version")
+            "minecraft_version_range" to project.property("minecraft_version_range"),
+            "neo_version_range" to project.property("neo_version_range"),
+            "loader_version_range" to project.property("loader_version_range"),
+            "mod_id" to project.property("mod_id"),
+            "mod_name" to project.property("mod_name"),
+            "mod_license" to project.property("mod_license"),
+            "mod_authors" to project.property("mod_authors"),
+            "mod_description" to project.property("mod_description")
         )
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // ensure that the encoding is set to UTF-8, no matter what the system default is
-    // this fixes some edge cases with special characters not displaying correctly
-    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-    // If Javadoc is generated, this must be specified in that task too.
     options.encoding = "UTF-8"
     options.release.set(targetJavaVersion)
 }
@@ -96,25 +107,23 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.jar {
+    dependsOn("clientClasses")
+    from(client.output)
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName}" }
     }
 }
 
-// configure the maven publication
+tasks.named<Jar>("sourcesJar") {
+    from(client.allSource)
+}
+
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             artifactId = project.property("archives_base_name") as String
             from(components["java"])
         }
-    }
-
-    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-    repositories {
-        // Add repositories to publish to here.
-        // Notice: This block does NOT have the same function as the block in the top level.
-        // The repositories here will be used for publishing your artifact, not for
-        // retrieving dependencies.
     }
 }

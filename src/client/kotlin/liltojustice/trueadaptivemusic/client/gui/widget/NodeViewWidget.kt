@@ -10,12 +10,12 @@ import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSoundDirectory
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSoundFile
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.registry.Registries
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
 import java.util.Timer
 import kotlin.concurrent.schedule
 import kotlin.reflect.full.primaryConstructor
@@ -33,7 +33,7 @@ class NodeViewWidget(
     : ContainerWidget(
     width,
     height,
-    Text.translatableWithFallback(
+    Component.translatableWithFallback(
         "trueadaptivemusic.node_view", "Node View").string,
     true,
     false,
@@ -56,18 +56,18 @@ class NodeViewWidget(
     private var shouldSave = false
     private var shouldExit = false
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (isMouseOver(mouseX, mouseY)) {
-            screen?.focused = null
+            screen?.clearFocus()
         }
 
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         shouldExit = false
         shouldSave = false
         super.renderWidget(context, mouseX, mouseY, delta)
@@ -81,7 +81,7 @@ class NodeViewWidget(
         else {
             drawCenteredText(
                 context,
-                Text.translatableWithFallback(
+                Component.translatableWithFallback(
                     "trueadaptivemusic.select_add_node", "Select or create a node").string,
                 0,
                 width / 2)
@@ -104,23 +104,23 @@ class NodeViewWidget(
                         clearLoopIntroEndpointWidgets()
                         onChange()
                     },
-                    Text.translatableWithFallback(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.music_choice", "Music Choice").string,
                     {
                         musicPack.getEditPackSoundLibrary().map { (assetName, _) -> assetName }.toMutableSet()
                             .union(
-                                Registries.SOUND_EVENT.ids
+                                BuiltInRegistries.SOUND_EVENT.keySet()
                                     .map { id -> id.toString() }
                                     .filter { path -> path.contains("music.") }
                             )
                             .sorted()
                     },
-                    Text.translatableWithFallback(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.select_track", "Select tracks").string,
                     selectedMusicPaths,
                     onHoverOption = { option ->
                         TAMClient.playSoundNow(option?.let { PlayableSound.of(it, soundLibrary) }) },
-                    tooltipText = Text.translatableWithFallback(
+                    tooltipText = Component.translatableWithFallback(
                         "trueadaptivemusic.music_choice.description",
                         "Select any amount of music to be chosen randomly to play"
                     )
@@ -139,23 +139,23 @@ class NodeViewWidget(
                         selectedAmbiencePaths = selected.toMutableList()
                         onChange()
                     },
-                    Text.translatableWithFallback(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.ambience_choice", "Ambience Choice").string,
                     {
                         musicPack.getEditPackSoundLibrary().map { (assetName, _) -> assetName }.toMutableSet()
                             .union(
-                                Registries.SOUND_EVENT.ids
+                                BuiltInRegistries.SOUND_EVENT.keySet()
                                     .map { id -> id.toString() }
                                     .filter { path -> path.contains("music.") }
                             )
                             .toList()
                     },
-                    Text.translatableWithFallback(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.select_track", "Select tracks").string,
                     selectedAmbiencePaths,
                     onHoverOption = { option ->
                         TAMClient.playSoundNow(option?.let { PlayableSound.of(it, soundLibrary) }) },
-                    tooltipText = Text.translatableWithFallback(
+                    tooltipText = Component.translatableWithFallback(
                         "trueadaptivemusic.ambience_choice.description",
                         "Select any amount of ambience to be chosen randomly to play")
                 )
@@ -188,12 +188,12 @@ class NodeViewWidget(
             addWidgetFromRender(
                 {
                     val newWidget = ClickableTextWidget(
-                        "${Text.translatableWithFallback(
+                        "${Component.translatableWithFallback(
                             "trueadaptivemusic.loop_start_points", "Loop Start Points").string}:"
                     )
                     newWidget.active = false
                     newWidget.setTooltip(
-                        Tooltip.of(
+                        Tooltip.create(
                             MusicTree.Node.Parameters.getParamDescription("loopStartPoints"))
                     )
                     newWidget
@@ -219,7 +219,7 @@ class NodeViewWidget(
                             outArg,
                             InputWidgetMaker.WidgetArg(
                                 typeOf<UInt>(), "loopStartPoints", 0),
-                            Text.literal(soundName),
+                            Component.literal(soundName),
                             null
                         ) {
                             val copy = mutableMapOf<String, UInt>()
@@ -245,7 +245,7 @@ class NodeViewWidget(
         addWidgetFromRender(
             {
                 val newWidget = ClickableTextWidget(
-                    "${Text.translatableWithFallback("trueadaptivemusic.events", "Events").string}:")
+                    "${Component.translatableWithFallback("trueadaptivemusic.events", "Events").string}:")
                 newWidget.active = false
                 newWidget
             }, "events"
@@ -264,9 +264,9 @@ class NodeViewWidget(
                         onEventClick(event)
                         scrollToBottom() },
                     isSelected = { selectedEvent == event })
-                    eventWidget.setTooltip(Tooltip.of(event.getTriggerTooltipText()))
+                    eventWidget.setTooltip(Tooltip.create(event.getTriggerTooltipText()))
                     if (event is ErrorEvent) {
-                        eventWidget.color = Colors.RED
+                        eventWidget.color = CommonColors.RED
                     }
 
                     eventWidget
@@ -278,7 +278,7 @@ class NodeViewWidget(
             {
                 val result = ClickableTextWidget(
                     "+ ${
-                        Text.translatableWithFallback(
+                        Component.translatableWithFallback(
                             "trueadaptivemusic.create_event", "Create Event").string}",
                     onClick = {
                         selectedEvent = null
@@ -287,8 +287,8 @@ class NodeViewWidget(
                     isSelected = { selectedEvent == null && inEventView() }
                 )
                 result.setTooltip(
-                    Tooltip.of(
-                        Text.translatableWithFallback(
+                    Tooltip.create(
+                        Component.translatableWithFallback(
                             "trueadaptivemusic.create_event", "Create a new event")
                     )
                 )
@@ -308,19 +308,19 @@ class NodeViewWidget(
                 {
                     var clicked = false
                     ClickableTextWidget(
-                        Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
+                        Component.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                         onClick = { widget ->
                             if (!clicked) {
                                 clicked = true
                                 widget.setText(widget.text + '?')
-                                widget.color = Colors.RED
+                                widget.color = CommonColors.RED
                                 val timer = Timer()
                                 timer.schedule(delay = 2000) {
                                     clicked = false
                                     widget.setText(
-                                        Text.translatableWithFallback(
+                                        Component.translatableWithFallback(
                                             "trueadaptivemusic.delete", "Delete").string)
-                                    widget.color = Colors.WHITE
+                                    widget.color = CommonColors.WHITE
                                 }
 
                                 return@ClickableTextWidget
@@ -334,8 +334,8 @@ class NodeViewWidget(
                 "Delete"
             )
             result.setTooltip(
-                Tooltip.of(
-                    Text.translatableWithFallback(
+                Tooltip.create(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.delete_node_description", "Delete this node")
                 )
             )
@@ -449,3 +449,5 @@ class NodeViewWidget(
         queueClearWidgetsFromRender { !it.id.startsWith("loopStartPoints") }
     }
 }
+
+

@@ -1,10 +1,10 @@
 package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.network.chat.Component
 import kotlin.math.max
 
 class DropdownWidget<TKey>(
@@ -17,7 +17,7 @@ class DropdownWidget<TKey>(
     notSelectedPlaceholder: String? = null,
     startingOption: TKey? = null,
     private val onHoverOption: (option: String?) -> Unit = {},
-    tooltipText: Text? = null,
+    tooltipText: Component? = null,
     x: Int = 0,
     y: Int = 0
 )
@@ -33,23 +33,23 @@ class DropdownWidget<TKey>(
     x,
     y,
     true) {
-    private val titleText = Text.literal(title)
+    private val titleText = Component.literal(title)
     private var dropdownResultsWidget: DropdownResultsWidget<TKey>
     private val realizedWidth = width.takeUnless { width == 0 }
         ?: (
                 max(
-                    textRenderer.getWidth(title),
+                    textRenderer.width(title),
                     (options + (getOptions?.invoke() ?: listOf()))
                         .map { getDisplay?.invoke(it) ?: it.toString() }
-                        .maxOfOrNull { option -> textRenderer.getWidth(option) } ?: 0
+                        .maxOfOrNull { option -> textRenderer.width(option) } ?: 0
                 ) + TEXT_WIDTH_BUFFER)
-    private val textInputWidget = TextFieldWidget(
+    private val textInputWidget = EditBox(
         textRenderer,
         0,
         0,
         realizedWidth,
-        textRenderer.fontHeight + TEXT_HEIGHT_BUFFER,
-        Text.literal("Dropdown Search")
+        textRenderer.lineHeight + TEXT_HEIGHT_BUFFER,
+        Component.literal("Dropdown Search")
     )
     private val selectedOptionWidget = run {
         val combinedOptions = options + (getOptions?.invoke() ?: listOf())
@@ -63,7 +63,7 @@ class DropdownWidget<TKey>(
 
     init {
         titleTextWidget.disableBold()
-        tooltipText?.let { setTooltip(Tooltip.of(it)) }
+        tooltipText?.let { setTooltip(Tooltip.create(it)) }
         this.width = realizedWidth
         dropdownResultsWidget = DropdownResultsWidget(
             options,
@@ -78,7 +78,7 @@ class DropdownWidget<TKey>(
             onHoverOption,
             x,
             y)
-        textInputWidget.setChangedListener { newText ->
+        textInputWidget.setResponder { newText ->
             dropdownResultsWidget.setSearchText(newText)
         }
         addWidget(titleTextWidget, 0)
@@ -90,7 +90,7 @@ class DropdownWidget<TKey>(
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         val result = super.mouseClicked(mouseX, mouseY, button)
-        textInputWidget.text = ""
+        textInputWidget.value = ""
         if (focusedWidget == selectedOptionWidget) {
             open()
         }
@@ -101,12 +101,12 @@ class DropdownWidget<TKey>(
         return result
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         super.renderWidget(context, mouseX, mouseY, delta)
         fitToChildrenHeight()
     }
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     private fun open() {
@@ -166,7 +166,7 @@ class DropdownWidget<TKey>(
             }
         }
 
-        override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+        override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
             if (!visible) {
                 return
             }
@@ -200,7 +200,7 @@ class DropdownWidget<TKey>(
             clearWidgetsFromRender()
         }
 
-        override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+        override fun updateWidgetNarration(builder: NarrationElementOutput) {
         }
 
         companion object {
@@ -208,3 +208,5 @@ class DropdownWidget<TKey>(
         }
     }
 }
+
+

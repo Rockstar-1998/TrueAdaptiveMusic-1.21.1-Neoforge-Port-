@@ -1,17 +1,17 @@
 package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.font.TextRenderer
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.screen.Screen.MENU_BACKGROUND_TEXTURE
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.widget.ClickableWidget
-import net.minecraft.client.sound.SoundManager
-import net.minecraft.screen.ScreenTexts
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.Screen.MENU_BACKGROUND
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.AbstractWidget
+import net.minecraft.client.sounds.SoundManager
+import net.minecraft.network.chat.CommonComponents
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
+import net.minecraft.resources.ResourceLocation
 import java.util.function.Consumer
 import kotlin.math.abs
 import kotlin.math.max
@@ -31,12 +31,12 @@ abstract class ContainerWidget(
     y: Int = 0,
     private val translucentInteract: Boolean = false,
     backButtonCallback: (() -> Unit)? = null)
-    : ClickableWidget(x, y, width, height, Text.literal(message)) {
+    : AbstractWidget(x, y, width, height, Component.literal(message)) {
     private val children = mutableMapOf<String, ChildWidget>()
     private val renderChildren = mutableMapOf<String, ChildWidget>()
-    private val client = MinecraftClient.getInstance()
-    protected val textRenderer: TextRenderer = client.textRenderer
-    protected val screen: Screen? = client.currentScreen
+    private val client = Minecraft.getInstance()
+    protected val textRenderer: Font = client.font
+    protected val screen: Screen? = client.screen
     private var verticalScrollPosition = 0.0
     private var horizontalScrollPosition = 0.0
     private var verticalScrollHeld = false
@@ -44,14 +44,14 @@ abstract class ContainerWidget(
     private var backButton = backButtonCallback?.let { makeBackButton(it) }
     private var lastUsedWidth = 0
     private var renderWidgetClearQueue = mutableListOf<(ChildWidget) -> Boolean>()
-    var focusedWidget: ClickableWidget? = null
+    var focusedWidget: AbstractWidget? = null
         protected set
 
     fun addBackButton(backButtonCallback: (() -> Unit)) {
         backButton = makeBackButton(backButtonCallback)
     }
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     override fun playDownSound(soundManager: SoundManager?) {
@@ -61,7 +61,7 @@ abstract class ContainerWidget(
         this.height = height
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         renderWidgetClearQueue.forEach { clearWidgetsFromRender(it) }
         renderWidgetClearQueue.clear()
         focusedWidget?.isFocused = true
@@ -74,21 +74,21 @@ abstract class ContainerWidget(
 
         if (showHeader)
         {
-            context?.setShaderColor(0f, 0f, 0f, if (bordered) 1f else 0.5f)
-            context?.fill(x, y, x + this.width, y + this.height, Colors.BLACK)
-            context?.fill(x, y,  x + width, y + TOP_MARGIN, Colors.BLACK)
-            context?.setShaderColor(1f, 1f, 1f, 1f)
+            context?.setColor(0f, 0f, 0f, if (bordered) 1f else 0.5f)
+            context?.fill(x, y, x + this.width, y + this.height, CommonColors.BLACK)
+            context?.fill(x, y,  x + width, y + TOP_MARGIN, CommonColors.BLACK)
+            context?.setColor(1f, 1f, 1f, 1f)
             drawCenteredText(context, message.string, -1, width / 2, shadow = true)
             backButton?.let {
                 it.x = x + 5
-                it.y = (y + getHeaderOffset() - getRowHeight(textRenderer.fontHeight)).toInt()
+                it.y = (y + getHeaderOffset() - getRowHeight(textRenderer.lineHeight)).toInt()
                 it.render(context, mouseX, mouseY, delta)
             }
-            context?.setShaderColor(1f, 1f, 1f, 1f)
+            context?.setColor(1f, 1f, 1f, 1f)
         }
 
        if (bordered) {
-            context?.drawBorder(x, y, width, height, Colors.WHITE)
+            context?.renderOutline(x, y, width, height, CommonColors.WHITE)
         }
 
         val usedWidth = getMaxUsedWidth()
@@ -146,7 +146,7 @@ abstract class ContainerWidget(
                 mouseY <= it.second + SCROLLBAR_GRACE &&
                 abs(mouseX - it.third) <= SCROLLBAR_GRACE) {
                 verticalScrollHeld = true
-                screen?.focused = this
+                screen?.setFocused(this)
 
                 return true
             }
@@ -157,7 +157,7 @@ abstract class ContainerWidget(
                 mouseX <= it.second + SCROLLBAR_GRACE &&
                 abs(mouseY - it.third) <= SCROLLBAR_GRACE) {
                 horizontalScrollHeld = true
-                screen?.focused = this
+                screen?.setFocused(this)
 
                 return true
             }
@@ -175,7 +175,7 @@ abstract class ContainerWidget(
             }
         }
 
-        screen?.focused = this
+        screen?.setFocused(this)
 
         return true
     }
@@ -185,7 +185,7 @@ abstract class ContainerWidget(
             val usableHeight = getUsableHeight()
             getVerticalScrollbarExtent()?.let {
                 val ratio = usableHeight.toDouble() / (it.second - it.first)
-                verticalScrollPosition += (deltaY * ratio) / getRowHeight(textRenderer.fontHeight)
+                verticalScrollPosition += (deltaY * ratio) / getRowHeight(textRenderer.lineHeight)
             }
         }
         else if (horizontalScrollHeld) {
@@ -256,16 +256,16 @@ abstract class ContainerWidget(
     }
 
     protected fun drawCenteredText(
-        drawContext: DrawContext?,
+        drawContext: GuiGraphics?,
         text: String,
         row: Int,
         xOffset: Int = 0,
-        color: Int = Colors.WHITE,
+        color: Int = CommonColors.WHITE,
         shadow: Boolean = true) {
-        drawContext?.drawText(
+        drawContext?.drawString(
             textRenderer,
             text,
-            xOffset + x - textRenderer.getWidth(text) / 2,
+            xOffset + x - textRenderer.width(text) / 2,
             getTranslatedY(row),
             color,
             shadow)
@@ -273,11 +273,11 @@ abstract class ContainerWidget(
 
     // Use if the widget is created on render
     fun addWidgetFromRender(
-        widgetMaker: () -> ClickableWidget,
+        widgetMaker: () -> AbstractWidget,
         widgetId: String,
         row: Int? = null,
         xOffset: Int = 0,
-        shouldRecompute: () -> Boolean = { false }): ClickableWidget {
+        shouldRecompute: () -> Boolean = { false }): AbstractWidget {
         if (!children.containsKey(widgetId) || shouldRecompute()) {
             children[widgetId] = ChildWidget(widgetId, widgetMaker(), row ?: 0, xOffset, true)
         }
@@ -292,7 +292,7 @@ abstract class ContainerWidget(
         return children[widgetId]!!.widget
     }
 
-    fun addWidget(child: ClickableWidget, row: Int, xOffset: Int = 0): ClickableWidget {
+    fun addWidget(child: AbstractWidget, row: Int, xOffset: Int = 0): AbstractWidget {
         val hash = child.hashCode().toString()
         if (!children.containsKey(hash)) {
             children[hash] = ChildWidget(hash, child, row, xOffset)
@@ -334,7 +334,7 @@ abstract class ContainerWidget(
                     min(maxRows, getMaxUsedRow(countOffscreen = true) + 1)
                 else
                     getMaxUsedRow(countOffscreen = true) + 1)
-                        * getRowHeight(textRenderer.fontHeight)
+                        * getRowHeight(textRenderer.lineHeight)
                         + getHeaderOffset()).toInt()
     }
 
@@ -347,7 +347,7 @@ abstract class ContainerWidget(
                 max = max(max, getTranslatedY(translated.row) - y + translated.widget.height)
             }
 
-        height = (max + getRowHeight(textRenderer.fontHeight)).toInt()
+        height = (max + getRowHeight(textRenderer.lineHeight)).toInt()
     }
 
     fun resetScrolling() {
@@ -360,14 +360,14 @@ abstract class ContainerWidget(
         horizontalScrollPosition = 0.0
     }
 
-    override fun forEachChild(consumer: Consumer<ClickableWidget>?) {
+    fun forEachChild(consumer: Consumer<AbstractWidget>?) {
         children.values.map { child -> child.widget }.forEach(consumer)
     }
 
-    protected open fun renderDarkening(context: DrawContext, x: Int, y: Int, width: Int, height: Int) {
+    protected open fun renderDarkening(context: GuiGraphics, x: Int, y: Int, width: Int, height: Int) {
         renderBackgroundTexture(
             context,
-            MENU_BACKGROUND_TEXTURE,
+            MENU_BACKGROUND,
             x,
             y,
             0.0f,
@@ -378,8 +378,8 @@ abstract class ContainerWidget(
     }
 
     fun renderBackgroundTexture(
-        context: DrawContext,
-        texture: Identifier?,
+        context: GuiGraphics,
+        texture: ResourceLocation?,
         x: Int,
         y: Int,
         u: Float,
@@ -387,17 +387,19 @@ abstract class ContainerWidget(
         width: Int,
         height: Int
     ) {
-        context.drawTexture(
-            texture,
-            x,
-            y,
-            u,
-            v,
-            width,
-            height,
-            32,
-            32
-        )
+        texture?.let {
+            context.blit(
+                it,
+                x,
+                y,
+                u,
+                v,
+                width,
+                height,
+                32,
+                32
+            )
+        }
     }
 
     private fun clampScrollPosition() {
@@ -414,11 +416,11 @@ abstract class ContainerWidget(
     }
 
     private fun getTranslatedY(row: Int): Int {
-        return (row * getRowHeight(textRenderer.fontHeight)).toInt() + getHeaderOffset() + y
+        return (row * getRowHeight(textRenderer.lineHeight)).toInt() + getHeaderOffset() + y
     }
 
     private fun totalRows(): Int {
-        return ((height - getHeaderOffset()) / getRowHeight(textRenderer.fontHeight)).roundToInt() -
+        return ((height - getHeaderOffset()) / getRowHeight(textRenderer.lineHeight)).roundToInt() -
                 (if (horizontallyScrollable) 1 else 0)
     }
 
@@ -446,7 +448,7 @@ abstract class ContainerWidget(
         return children.values.maxOfOrNull { it.xOffset + it.widget.width + X_MARGIN } ?: width
     }
 
-    private fun drawVerticalScrollbar(context: DrawContext?): Triple<Int, Int, Int>? {
+    private fun drawVerticalScrollbar(context: GuiGraphics?): Triple<Int, Int, Int>? {
         val extent = getVerticalScrollbarExtent() ?: return null
         val headerOffset = getHeaderOffset()
         val adjustedHeight = height - headerOffset - 6
@@ -454,18 +456,18 @@ abstract class ContainerWidget(
 
         context?.let {
             renderDarkening(it, x, y + headerOffset, 1, adjustedHeight)
-            it.drawVerticalLine(
+            it.vLine(
                 x,
                 extent.first,
                 extent.second,
-                Colors.WHITE
+                CommonColors.WHITE
             )
         }
 
         return extent
     }
 
-    private fun drawHorizontalScrollbar(context: DrawContext?): Triple<Int, Int, Int>? {
+    private fun drawHorizontalScrollbar(context: GuiGraphics?): Triple<Int, Int, Int>? {
         val extent = getHorizontalScrollbarExtent() ?: return null
         val usableWidth = getUsableWidth()
         val offset = width - usableWidth
@@ -473,7 +475,7 @@ abstract class ContainerWidget(
 
         context?.let {
             renderDarkening(it, x + offset, y, usableWidth - offset, 1)
-            it.drawHorizontalLine(extent.first, extent.second, y, Colors.WHITE)
+            it.hLine(extent.first, extent.second, y, CommonColors.WHITE)
         }
 
         return extent
@@ -569,15 +571,17 @@ abstract class ContainerWidget(
 
         private fun makeBackButton(backButtonCallback: () -> Unit): ClickableTextWidget {
             return backButtonCallback.let {
-                ClickableTextWidget("< ${ScreenTexts.BACK.string}", onClick = { it() })
+                ClickableTextWidget("< ${CommonComponents.GUI_BACK.string}", onClick = { it() })
             }
         }
     }
 
     data class ChildWidget(
-        val id: String, val widget: ClickableWidget, val row: Int, val xOffset: Int, val fromRender: Boolean = false) {
+        val id: String, val widget: AbstractWidget, val row: Int, val xOffset: Int, val fromRender: Boolean = false) {
         fun translated(row: Int, xOffset: Int = 0): ChildWidget {
             return copy(row = this.row - row, xOffset = this.xOffset + xOffset)
         }
     }
 }
+
+

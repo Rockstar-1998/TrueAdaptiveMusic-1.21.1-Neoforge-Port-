@@ -15,11 +15,11 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateFactory
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicateRegistry
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.gui.widget.ClickableWidget
-import net.minecraft.client.toast.SystemToast
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.components.AbstractWidget
+import net.minecraft.client.gui.components.toasts.SystemToast
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
 import java.io.IOException
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
@@ -27,7 +27,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 object TAMClient {
-    val minecraftClient: MinecraftClient = MinecraftClient.getInstance()
+    val minecraftClient: Minecraft = Minecraft.getInstance()
     val predicateRegistry = MusicPredicateRegistry()
     val eventRegistry = MusicEventRegistry()
     val predicateFactory = MusicPredicateFactory(predicateRegistry)
@@ -58,7 +58,7 @@ object TAMClient {
     var musicPack: MusicPack? = null
         set(value) {
             field = value
-            minecraftClient.soundManager.soundSystem.reloadSounds()
+            minecraftClient.soundManager.reload()
             hasFFmpeg = hasFFmpegGlobal || hasFFmpegLocal
             musicManager?.stop()
 
@@ -75,7 +75,7 @@ object TAMClient {
     private var initialized = false
     private var musicManager: MusicManager? = null
 
-    fun tick(client: MinecraftClient) {
+    fun tick(client: Minecraft) {
         if (!initialized) {
             initialize(client)
         }
@@ -128,10 +128,10 @@ object TAMClient {
         screen: Screen,
         outArgs: MutableList<Any?>,
         arg: InputWidgetMaker.WidgetArg,
-        displayName: Text?,
-        tooltipText: Text?,
+        displayName: Component?,
+        tooltipText: Component?,
         onChange: () -> Unit = {})
-    : ClickableWidget {
+    : AbstractWidget {
         return inputWidgetMaker.makeWidget(screen, outArgs, arg, displayName, tooltipText, onChange)
     }
 
@@ -147,8 +147,8 @@ object TAMClient {
         invokeMusicEvent(eventType.kotlin, *eventArgs)
     }
 
-    private fun initialize(client: MinecraftClient) {
-        if (initialized || !client.soundManager.soundSystem.started) {
+    private fun initialize(client: Minecraft) {
+        if (initialized) {
             return
         }
 
@@ -178,14 +178,12 @@ object TAMClient {
         initialized = true
     }
 
-    fun errorToast(errorMessage: Text, exceptionMessage: String? = null) {
-        minecraftClient.toastManager.add(
-            SystemToast.create(
-                minecraftClient,
-                SystemToast.Type.FILE_DROP_FAILURE,
-                errorMessage,
-                Text.literal(exceptionMessage ?: "")
-            )
+    fun errorToast(errorMessage: Component, exceptionMessage: String? = null) {
+        SystemToast.addOrUpdate(
+            minecraftClient.getToasts(),
+            SystemToast.SystemToastId.FILE_DROP_FAILURE,
+            errorMessage,
+            Component.literal(exceptionMessage ?: "")
         )
     }
 }

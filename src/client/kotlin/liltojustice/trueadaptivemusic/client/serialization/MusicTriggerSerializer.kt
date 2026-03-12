@@ -20,7 +20,7 @@ import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.util.JsonHelper
+import net.minecraft.util.GsonHelper
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.primaryConstructor
@@ -64,10 +64,10 @@ object MusicTriggerSerializer {
 
     private fun deserializePredicate(json: JsonObject, soundLibrary: SoundLibrary): MusicPredicate {
         return try {
-            val typeName = JsonHelper.getString(json, "type")
+            val typeName = GsonHelper.getAsString(json, "type")
             val type = TAMClient.predicateRegistry[typeName]
 
-            val stateless = getGson(soundLibrary).fromJson(json, type.java)
+            val stateless = getGson(soundLibrary).fromJson(json, type.java) as MusicPredicate
             val result = stateless::class.constructors.firstOrNull()
                 ?.call(*stateless.getTriggerArgs().map { arg -> arg.value }.toTypedArray())
                 ?: throw MusicLoadException(
@@ -81,10 +81,10 @@ object MusicTriggerSerializer {
 
     private fun deserializeEvent(json: JsonObject, soundLibrary: SoundLibrary): MusicEvent {
         return try {
-            val typeName = JsonHelper.getString(json, "type")
+            val typeName = GsonHelper.getAsString(json, "type")
             val type = TAMClient.eventRegistry[typeName]
 
-            val stateless = getGson(soundLibrary).fromJson(json, type.java)
+            val stateless = getGson(soundLibrary).fromJson(json, type.java) as MusicEvent
             val result = stateless::class.constructors.firstOrNull()
                 ?.call(*stateless.getTriggerArgs().map { arg -> arg.value }.toTypedArray())
                 ?: throw MusicLoadException(

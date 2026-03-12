@@ -7,11 +7,11 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
 import java.util.Timer
 import kotlin.concurrent.schedule
 
@@ -25,7 +25,7 @@ class PredicateViewWidget(
     : ContainerWidget(
     width,
     height,
-    Text.translatableWithFallback(
+    Component.translatableWithFallback(
         "trueadaptivemusic.predicate_view", "Predicate View").string,
     true,
     false,
@@ -43,7 +43,7 @@ class PredicateViewWidget(
     private var selectedNode: MusicTree.Node? = null
     private var soundLibrary = musicPack.getEditPackSoundLibrary()
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -54,7 +54,7 @@ class PredicateViewWidget(
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         super.renderWidget(context, mouseX, mouseY, delta)
         if (!visible) {
             return
@@ -78,10 +78,10 @@ class PredicateViewWidget(
                         onChange()
                     },
                     width,
-                    Text.translatableWithFallback("trueadaptivemusic.type", "Type").string,
+                    Component.translatableWithFallback("trueadaptivemusic.type", "Type").string,
                     { MusicPredicate.getDisplayName(it).string },
                     startingOption = selectedPredicateTypeName.takeIf { it.isNotBlank() },
-                    tooltipText = Text.translatableWithFallback(
+                    tooltipText = Component.translatableWithFallback(
                         "trueadaptivemusic.predicate_type.description",
                         "Select under what circumstances the music should play"
                     )
@@ -121,20 +121,20 @@ class PredicateViewWidget(
                 {
                     var clicked = false
                     ClickableTextWidget(
-                        Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
+                        Component.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                         onClick = { widget ->
                             if (!clicked) {
                                 clicked = true
                                 widget.setText(widget.text + '?')
-                                widget.color = Colors.RED
+                                widget.color = CommonColors.RED
                                 val timer = Timer()
                                 timer.schedule(delay = 2000) {
                                     clicked = false
                                     widget.setText(
-                                        Text.translatableWithFallback(
+                                        Component.translatableWithFallback(
                                             "trueadaptivemusic.delete", "Delete").string
                                     )
-                                    widget.color = Colors.WHITE
+                                    widget.color = CommonColors.WHITE
                                 }
 
                                 return@ClickableTextWidget
@@ -148,8 +148,8 @@ class PredicateViewWidget(
                 "Delete"
             )
             result.setTooltip(
-                Tooltip.of(
-                    Text.translatableWithFallback(
+                Tooltip.create(
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.delete_predicate_description", "Delete this predicate")
                 )
             )
@@ -199,7 +199,7 @@ class PredicateViewWidget(
         val result = addWidgetFromRender(
             {
                 ClickableTextWidget(
-                    Text.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
+                    Component.translatableWithFallback("trueadaptivemusic.delete", "Delete").string,
                     onClick = {
                         selectedNode?.predicates?.remove(selectedPredicate)
                         selectedNode = null
@@ -211,8 +211,8 @@ class PredicateViewWidget(
             "Delete"
         )
         result.setTooltip(
-            Tooltip.of(
-                Text.translatableWithFallback(
+            Tooltip.create(
+                Component.translatableWithFallback(
                     "trueadaptivemusic.delete_predicate_description", "Delete this predicate")
             )
         )
@@ -264,3 +264,5 @@ class PredicateViewWidget(
             selectedPredicateTypeName, predicateArgs.filterNotNull())
     }
 }
+
+

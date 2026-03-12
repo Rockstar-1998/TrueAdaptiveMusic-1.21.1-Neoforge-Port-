@@ -1,6 +1,6 @@
 package liltojustice.trueadaptivemusic.client.sound.stream
 
-import net.minecraft.client.sound.AudioStream
+import net.minecraft.client.sounds.AudioStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.sound.sampled.AudioFormat

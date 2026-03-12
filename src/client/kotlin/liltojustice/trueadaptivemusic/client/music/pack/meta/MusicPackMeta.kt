@@ -2,7 +2,7 @@ package liltojustice.trueadaptivemusic.client.music.pack.meta
 
 import com.google.gson.GsonBuilder
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
-import net.fabricmc.loader.api.FabricLoader
+import net.neoforged.fml.ModList
 
 data class MusicPackMeta(val requiredBridgeMods: List<ModDependency> = emptyList()) {
     fun jsonEncode(): String {
@@ -31,9 +31,9 @@ data class MusicPackMeta(val requiredBridgeMods: List<ModDependency> = emptyList
                 }
             }
 
-            FabricLoader.getInstance().allMods.map { it.metadata }.forEach { metadata ->
-                if (packageNames.any { packageName -> packageName.contains(metadata.id) }) {
-                    requiredBridgeMods.add(ModDependency(metadata.id, metadata.name))
+            ModList.get().mods.forEach { modInfo ->
+                if (packageNames.any { packageName -> packageName.contains(modInfo.modId) }) {
+                    requiredBridgeMods.add(ModDependency(modInfo.modId, modInfo.displayName))
                 }
             }
 

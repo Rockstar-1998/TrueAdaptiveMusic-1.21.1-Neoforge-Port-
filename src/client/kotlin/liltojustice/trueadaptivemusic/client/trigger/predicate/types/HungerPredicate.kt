@@ -1,16 +1,16 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 class HungerPredicate(private val direction: Direction, private val hungerPercentage: Int): MusicPredicate() {
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
+        val client = Minecraft.getInstance()
         if (client.player?.isCreative == true || client.player?.isSpectator == true) {
             return false
         }
 
-        val currentPercentage = (client.player?.hungerManager?.foodLevel ?: return false) / 20F
+        val currentPercentage = (client.player?.foodData?.foodLevel ?: return false) / 20F
         val thresholdPercentage = hungerPercentage / 100F
 
         return when (direction) {

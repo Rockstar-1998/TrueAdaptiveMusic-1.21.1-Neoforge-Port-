@@ -8,13 +8,13 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.client.gui.widget.ClickableWidget
-import net.minecraft.text.MutableText
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.client.gui.components.AbstractWidget
+import net.minecraft.network.chat.MutableComponent
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
 import kotlin.math.max
 
 class PackStructureWidget(
@@ -78,7 +78,7 @@ class PackStructureWidget(
                 if (node.children.isNotEmpty()) {
                     val widget = addWidget(
                         ClickableTextWidget(
-                            if (isCollapsed) "˃" else "˅",
+                            if (isCollapsed) ">" else "v",
                             showHighlight = false,
                             onClick = {
                                 collapsed[node] = !isCollapsed
@@ -92,7 +92,7 @@ class PackStructureWidget(
                         row,
                         xOffset
                     )
-                    widget.setTooltip(Tooltip.of(if (isCollapsed) EXPAND_TEXT else COLLAPSE_TEXT))
+                    widget.setTooltip(Tooltip.create(if (isCollapsed) EXPAND_TEXT else COLLAPSE_TEXT))
                 }
 
                 addWidget(NodeWidget(node, TargetNode(node, false)), row, xOffset + 7)
@@ -114,7 +114,7 @@ class PackStructureWidget(
         )
     }
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
@@ -207,7 +207,7 @@ class PackStructureWidget(
         return result
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         super.renderWidget(context, mouseX, mouseY, delta)
 
         if (!isMovingNode()) {
@@ -222,25 +222,25 @@ class PackStructureWidget(
             }
 
             val valid = targetedNode?.let { child.isValidDestination(it) || shiftHeld } == true
-            val rowHeight = getRowHeight(textRenderer.fontHeight)
+            val rowHeight = getRowHeight(textRenderer.lineHeight)
 
             if (spaceHeld && !child.targetNode.isParent) {
-                context?.drawText(
+                context?.drawString(
                     textRenderer,
                     ARROW_TEXT,
-                    child.x + INDENT - textRenderer.getWidth(ARROW_TEXT) - 2,
+                    child.x + INDENT - textRenderer.width(ARROW_TEXT) - 2,
                     child.y + (rowHeight / 2).toInt(),
-                    if (valid) Colors.WHITE else Colors.RED,
+                    if (valid) CommonColors.WHITE else CommonColors.RED,
                     false
                 )
             }
             else {
-                context?.drawText(
+                context?.drawString(
                     textRenderer,
                     ARROW_TEXT,
-                    child.x - textRenderer.getWidth(ARROW_TEXT) - 2,
+                    child.x - textRenderer.width(ARROW_TEXT) - 2,
                     child.y - (rowHeight / 2).toInt(),
-                    if (valid) Colors.WHITE else Colors.RED,
+                    if (valid) CommonColors.WHITE else CommonColors.RED,
                     false
                 )
             }
@@ -263,33 +263,33 @@ class PackStructureWidget(
         const val SHIFT_KEY = 340
         const val CTRL_KEY = 341
         const val SPACE_KEY = 32
-        val TITLE_TEXT: MutableText = Text.translatableWithFallback(
+        val TITLE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.pack_structure", "Pack Structure")
-        val MOVE_NODE_TEXT: MutableText = Text.translatableWithFallback(
+        val MOVE_NODE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.move_node",
             "Click and drag to move\n+ shift (copy)\n+ ctrl (copy recursively)\n+ space (target children" +
                     " of node)"
         )
-        val ARROW_TEXT: MutableText = Text.literal("→")
-        val LINE_SPACE: MutableText = Text.literal("\n\n")
-        val CREATE_CHILD_NODE_TEXT: MutableText = Text.translatableWithFallback(
+        val ARROW_TEXT: MutableComponent = Component.literal("->")
+        val LINE_SPACE: MutableComponent = Component.literal("\n\n")
+        val CREATE_CHILD_NODE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.create_child_node", "Create Child Node"
         )
-        val CREATE_CHILD_NODE_ROOT_TEXT: MutableText = Text.translatableWithFallback(
+        val CREATE_CHILD_NODE_ROOT_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.create_child_node_root", "Create Child Node of Root"
         )
-        val CREATE_NODE_TEXT: MutableText = Text.translatableWithFallback(
+        val CREATE_NODE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.create_node", "Create New Node")
-        val CREATE_PREDICATE_TEXT: MutableText = Text.translatableWithFallback(
+        val CREATE_PREDICATE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.create_predicate", "Create a Predicate")
-        val COMBINE_PREDICATES_TEXT: MutableText = Text.translatableWithFallback(
+        val COMBINE_PREDICATES_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.combine_predicates", "Combine Predicates")
-        val EMPTY_TEXT: MutableText = Text.translatableWithFallback("trueadaptivemusic.empty", "Empty")
-        val CONFIGURE_NODE_TEXT: MutableText = Text.translatableWithFallback(
+        val EMPTY_TEXT: MutableComponent = Component.translatableWithFallback("trueadaptivemusic.empty", "Empty")
+        val CONFIGURE_NODE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.configure_node", "Configure this node")
-        val EXPAND_TEXT: MutableText = Text.translatableWithFallback(
+        val EXPAND_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.expand", "Click to Expand Children\n\nHold shift to expand recursively")
-        val COLLAPSE_TEXT: MutableText = Text.translatableWithFallback(
+        val COLLAPSE_TEXT: MutableComponent = Component.translatableWithFallback(
             "trueadaptivemusic.collapse", "Click to Collapse Children")
     }
 
@@ -320,11 +320,11 @@ class PackStructureWidget(
 
                 val tooltipText = predicate.getTriggerTooltipText()
 
-                widget.setTooltip(Tooltip.of(tooltipText))
+                widget.setTooltip(Tooltip.create(tooltipText))
                 widget.color = if (predicate is ErrorPredicate)
-                    Colors.RED
+                    CommonColors.RED
                 else
-                    Colors.WHITE
+                    CommonColors.WHITE
 
                 widget
             }
@@ -352,7 +352,7 @@ class PackStructureWidget(
                 }
 
                 widget.setTooltip(
-                    Tooltip.of(
+                    Tooltip.create(
                         if (node.predicates.isEmpty())
                             CREATE_PREDICATE_TEXT
                         else
@@ -365,7 +365,7 @@ class PackStructureWidget(
 
         val configureNodeWidget = run {
             val widget = ClickableTextWidget(
-                if (targetedNode == node && node.parent != null) "⠿⠿" else "⚙",
+                if (targetedNode == node && node.parent != null) "[E]" else "[ ]",
                 showHighlight = false,
                 onClick = {
                     collapsed[node] = false
@@ -375,10 +375,10 @@ class PackStructureWidget(
                 }
             )
             val tooltipText = if (targetedNode !== node)
-                CONFIGURE_NODE_TEXT.copyContentOnly().append(LINE_SPACE).append(MOVE_NODE_TEXT)
+                Component.empty().append(CONFIGURE_NODE_TEXT).append(LINE_SPACE).append(MOVE_NODE_TEXT)
             else
                 MOVE_NODE_TEXT
-            widget.setTooltip(Tooltip.of(tooltipText))
+            widget.setTooltip(Tooltip.create(tooltipText))
 
             widget
         }
@@ -396,7 +396,7 @@ class PackStructureWidget(
             return result
         }
 
-        override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+        override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
             super.renderWidget(context, mouseX, mouseY, delta)
             var nextX = 0
 
@@ -419,10 +419,10 @@ class PackStructureWidget(
             }
         }
 
-        override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+        override fun updateWidgetNarration(builder: NarrationElementOutput) {
         }
 
-        private fun renderWidget(widget: ClickableWidget, nextX: Int, render: () -> Unit): Int {
+        private fun renderWidget(widget: AbstractWidget, nextX: Int, render: () -> Unit): Int {
             widget.x = x + nextX
             widget.y = y
             width = max(width, nextX + widget.width)
@@ -441,7 +441,7 @@ class PackStructureWidget(
             onClick = { onSelectCreateNewNode(targetNode.node) }
         ) {
         init {
-            setTooltip(Tooltip.of(CREATE_NODE_TEXT))
+            setTooltip(Tooltip.create(CREATE_NODE_TEXT))
         }
     }
 
@@ -455,3 +455,6 @@ class PackStructureWidget(
 
     private data class TargetNode(val node: MusicTree.Node, val isParent: Boolean)
 }
+
+
+

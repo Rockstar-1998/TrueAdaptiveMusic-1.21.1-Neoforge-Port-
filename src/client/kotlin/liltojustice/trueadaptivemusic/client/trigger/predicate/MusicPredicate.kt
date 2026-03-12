@@ -6,7 +6,7 @@ import liltojustice.trueadaptivemusic.text.translatableWithFallbackOrNull
 import liltojustice.trueadaptivemusic.client.trigger.MusicTrigger
 import liltojustice.trueadaptivemusic.client.trigger.TriggerReflectionHelper
 import liltojustice.trueadaptivemusic.text.StringExtensions.prettify
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
 
 abstract class MusicPredicate: MusicTrigger() {
     private var lastResult = false
@@ -46,14 +46,14 @@ abstract class MusicPredicate: MusicTrigger() {
     }
 
     interface MusicPredicateCompanion: MusicTriggerCompanion {
-        override fun getDisplayName(triggerName: String): Text {
-            return Text.translatableWithFallback(
+        override fun getDisplayName(triggerName: String): Component {
+            return Component.translatableWithFallback(
                 "trueadaptivemusic.predicate.name.${triggerName}",
                 displayName ?: triggerName.prettify()
             )
         }
 
-        override fun getArgDisplayName(triggerName: String, argName: String): Text? {
+        override fun getArgDisplayName(triggerName: String, argName: String): Component? {
             val predicateType = TAMClient.predicateRegistry[triggerName]
             val inferredDisplayNames = ReflectionHelper.getConstructorParameterNames(predicateType)
             val combined = inferredDisplayNames.associateWith { it.prettify() } +
@@ -65,7 +65,7 @@ abstract class MusicPredicate: MusicTrigger() {
             )
         }
 
-        override fun getArgDescription(triggerName: String, argName: String): Text? {
+        override fun getArgDescription(triggerName: String, argName: String): Component? {
             return translatableWithFallbackOrNull(
                 "trueadaptivemusic.predicate.arg.${triggerName}.${argName}.description",
                 TriggerReflectionHelper.getMusicTriggerArgDescriptions(

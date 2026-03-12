@@ -2,8 +2,9 @@ package liltojustice.trueadaptivemusic.client.mixin;
 
 import liltojustice.trueadaptivemusic.client.TAMClient;
 import liltojustice.trueadaptivemusic.client.javasucks.SoundManagerMixinHelper;
-import net.minecraft.client.sound.*;
-import avq.avq;
+import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.sounds.SoundManager;
+import net.minecraft.sounds.SoundSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -11,15 +12,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(SoundManager.class)
 public class SoundManagerMixin {
-    @Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "play(Lnet/minecraft/client/resources/sounds/SoundInstance;)V", at = @At("HEAD"), cancellable = true)
     public void play(SoundInstance sound, CallbackInfo ci) {
         if (SoundManagerMixinHelper.shouldIgnore(sound)) {
             ci.cancel();
         }
     }
 
-    @Inject(method = "updateSoundVolume", at = @At("HEAD"))
-    public void updateSoundVolume(avq soundCategory, float f, CallbackInfo ci) {
+    @Inject(method = "updateSourceVolume", at = @At("HEAD"))
+    public void updateSoundVolume(SoundSource soundCategory, float f, CallbackInfo ci) {
         TAMClient.INSTANCE.refreshSoundVolume();
+    }
+
+    @Inject(method = "reload", at = @At("HEAD"))
+    public void reload(CallbackInfo ci) {
+        TAMClient.INSTANCE.resetSound();
     }
 }

@@ -2,30 +2,31 @@ package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.identifier.StructureIdentifier
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
-import net.minecraft.registry.RegistryKeys
-import net.minecraft.server.world.ServerWorld
-import net.minecraft.structure.StructureStart
-import net.minecraft.util.math.BlockBox
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.ChunkSectionPos
-import net.minecraft.world.gen.StructureAccessor
-import net.minecraft.world.gen.structure.Structure
+import net.minecraft.client.Minecraft
+import net.minecraft.core.registries.Registries
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.levelgen.structure.StructureStart
+import net.minecraft.world.level.levelgen.structure.BoundingBox
+import net.minecraft.core.BlockPos
+import net.minecraft.core.SectionPos
+import net.minecraft.world.level.StructureManager
+import net.minecraft.world.level.levelgen.structure.Structure
 import kotlin.math.max
 import kotlin.math.min
 
 class StructurePredicate internal constructor(private val structures: List<StructureIdentifier>): MusicPredicate() {
-    private fun fullStructureTest(world: ServerWorld, x: Double, y: Double, z: Double): Boolean {
-        val blockPos = BlockPos.ofFloored(x, y, z)
-        val structureAccessor = world.structureAccessor
+    private fun fullStructureTest(world: ServerLevel, x: Double, y: Double, z: Double): Boolean {
+        val blockPos = BlockPos.containing(x, y, z)
+        val structureManager = world.structureManager()
+        val structureRegistry = structureManager.registryAccess().registryOrThrow(Registries.STRUCTURE)
 
         return (structures.takeIf { structures.isNotEmpty() }?.map { structure -> structure.id }
             ?: StructureIdentifier.getRegistryIds())
             .any { structureId ->
                 val structure: Structure =
-                    structureAccessor.registryManager.get(RegistryKeys.STRUCTURE).get(structureId) ?: return false
+                    structureRegistry.get(structureId) ?: return false
 
-                testStructure(structureAccessor, structure, blockPos)
+                testStructure(structureManager, structure, blockPos)
             }
     }
 
@@ -34,14 +35,15 @@ class StructurePredicate internal constructor(private val structures: List<Struc
     }
 
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
-        val serverWorld = client.server?.worlds?.firstOrNull { world ->
-            world.registryKey == client.world?.registryKey } ?: return false
+        val client = Minecraft.getInstance()
+        val clientWorld = client.level ?: return false
+        val serverWorld = client.singleplayerServer?.getLevel(clientWorld.dimension()) ?: return false
         val x: Double = client.player?.x ?: return false
         val y: Double = client.player?.y ?: return false
         val z: Double = client.player?.z ?: return false
 
-        return serverWorld.canSetBlock(BlockPos.ofFloored(x, y, z)) && fullStructureTest(serverWorld, x, y, z)
+        val pos = BlockPos.containing(x, y, z)
+        return serverWorld.isInWorldBounds(pos) && fullStructureTest(serverWorld, x, y, z)
     }
 
     companion object: MusicPredicateCompanion {
@@ -51,7 +53,7 @@ class StructurePredicate internal constructor(private val structures: List<Struc
                         "structure will trigger the music."
             )
 
-        fun testStructure(structureAccessor: StructureAccessor, structure: Structure, blockPos: BlockPos): Boolean {
+        fun testStructure(structureAccessor: StructureManager, structure: Structure, blockPos: BlockPos): Boolean {
             var minX = Int.MAX_VALUE
             var minY = Int.MAX_VALUE
             var minZ = Int.MAX_VALUE
@@ -59,22 +61,23 @@ class StructurePredicate internal constructor(private val structures: List<Struc
             var maxY = Int.MIN_VALUE
             var maxZ = Int.MIN_VALUE
 
-            val structureStarts = structureAccessor.getStructureStarts(ChunkSectionPos.from(blockPos), structure)
+            val structureStarts = structureAccessor.startsForStructure(SectionPos.of(blockPos), structure)
             if (structureStarts.isEmpty())
             {
                 return false
             }
 
             for (structureStart: StructureStart in structureStarts) {
-                minX = min(minX, structureStart.boundingBox.minX)
-                minY = min(minY, structureStart.boundingBox.minY)
-                minZ = min(minZ, structureStart.boundingBox.minZ)
-                maxX = max(maxX, structureStart.boundingBox.maxX)
-                maxY = max(maxY, structureStart.boundingBox.maxY)
-                maxZ = max(maxZ, structureStart.boundingBox.maxZ)
+                val box = structureStart.boundingBox
+                minX = min(minX, box.minX())
+                minY = min(minY, box.minY())
+                minZ = min(minZ, box.minZ())
+                maxX = max(maxX, box.maxX())
+                maxY = max(maxY, box.maxY())
+                maxZ = max(maxZ, box.maxZ())
             }
 
-            return BlockBox(minX, minY, minZ, maxX, maxY, maxZ).expand(20).contains(blockPos)
+            return BoundingBox(minX, minY, minZ, maxX, maxY, maxZ).inflatedBy(20).isInside(blockPos)
         }
     }
 }

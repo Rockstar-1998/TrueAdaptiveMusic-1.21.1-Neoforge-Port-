@@ -1,14 +1,14 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 class MoonPhasePredicate(private val moonPhase: MoonPhase): MusicPredicate() {
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
-        val world = client.world ?: return false
+        val client = Minecraft.getInstance()
+        val world = client.level ?: return false
         val currentPhase = world.moonPhase
-        val time = world.timeOfDay % 24000
+        val time = world.dayTime % 24000
 
         return time in 13000..23999 && when(moonPhase) {
             MoonPhase.Full -> currentPhase == 0

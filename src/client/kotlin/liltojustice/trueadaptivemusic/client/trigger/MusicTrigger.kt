@@ -13,7 +13,7 @@ import liltojustice.trueadaptivemusic.ReflectionHelper
 import liltojustice.trueadaptivemusic.client.Serialize
 import liltojustice.trueadaptivemusic.client.sound.SoundLibrary
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSound
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.primaryConstructor
@@ -55,9 +55,9 @@ abstract class MusicTrigger {
         val argDescriptions: Map<String, String>
             get() = mapOf()
 
-        fun getDisplayName(triggerName: String): Text
-        fun getArgDisplayName(triggerName: String, argName: String): Text?
-        fun getArgDescription(triggerName: String, argName: String): Text?
+        fun getDisplayName(triggerName: String): Component
+        fun getArgDisplayName(triggerName: String, argName: String): Component?
+        fun getArgDescription(triggerName: String, argName: String): Component?
     }
 
     abstract class Parameters {

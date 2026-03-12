@@ -1,13 +1,13 @@
 package liltojustice.trueadaptivemusic.client.identifier
 
 import liltojustice.trueadaptivemusic.text.StringExtensions.prettify
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.ResourceLocation
 import kotlin.reflect.KType
 import kotlin.reflect.full.*
 import kotlin.text.split
 
-sealed class TypedIdentifier(val id: Identifier) {
+sealed class TypedIdentifier(val id: ResourceLocation) {
     val path: String
         get() = id.path
     val namespace: String
@@ -20,12 +20,12 @@ sealed class TypedIdentifier(val id: Identifier) {
     }
 
     fun toTranslationKey(prefix: String): String {
-        return id.toTranslationKey(prefix)
+        return id.toLanguageKey(prefix)
     }
 
     fun prettify(): String {
         val translationKey = toPrefixedTranslationKey()
-        val translatedString = Text.translatable(translationKey).string
+        val translatedString = Component.translatable(translationKey).string
         return if (translatedString != translationKey) {
             "${toString().split(":")[0].replaceFirstChar { it.uppercase() }} - $translatedString"
         }
@@ -35,19 +35,19 @@ sealed class TypedIdentifier(val id: Identifier) {
     }
 
     companion object: TypedIdentifierCompanion() {
-        override fun getRegistryIds(): List<Identifier> {
+        override fun getRegistryIds(): List<ResourceLocation> {
             throw TypedIdentifierException(
                 "Attempt to get type name from abstract ${TypedIdentifier::class.simpleName}.")
         }
 
-        fun getRegistryIdsFromType(type: KType): List<Identifier> {
+        fun getRegistryIdsFromType(type: KType): List<ResourceLocation> {
             val typeCompanion = TypedIdentifierCompanion::class.sealedSubclasses
                 .firstOrNull { subclass -> subclass.qualifiedName?.contains(type.toString()) ?: false }
                 ?: throw TypedIdentifierException("Failed to find valid companion for $type. " +
                         "Ensure it has a companion object implementing the " +
                         "${TypedIdentifierCompanion::class.simpleName} interface.")
             return (typeCompanion.functions.firstOrNull { f -> f.name == Companion::getRegistryIds.name }
-                ?.call(typeCompanion.objectInstance) as? List<*>)?.mapNotNull { x -> x as? Identifier }
+                ?.call(typeCompanion.objectInstance) as? List<*>)?.mapNotNull { x -> x as? ResourceLocation }
                 ?: throw TypedIdentifierException(
                     "Failed to get registry ids from identifier type ${type}. " +
                             "Ensure it has a companion object implementing the " +
@@ -56,13 +56,15 @@ sealed class TypedIdentifier(val id: Identifier) {
     }
 
     sealed class TypedIdentifierCompanion {
-        abstract fun getRegistryIds(): List<Identifier>
+        abstract fun getRegistryIds(): List<ResourceLocation>
         fun initializeFromIdString(type: KType, id: String): TypedIdentifier {
+            val parsedId = ResourceLocation.tryParse(id)
+                ?: throw TypedIdentifierException("Failed to initialize ${this::class.simpleName} from id $id")
             return TypedIdentifier::class.sealedSubclasses
                 .firstOrNull { subclass ->
                     subclass.createType(
                         type.arguments, type.isMarkedNullable, type.annotations) == type }
-                ?.primaryConstructor?.call(Identifier.of(id))
+                ?.primaryConstructor?.call(parsedId)
                 ?: throw TypedIdentifierException("Failed to initialize ${this::class.simpleName} from id $id")
         }
     }

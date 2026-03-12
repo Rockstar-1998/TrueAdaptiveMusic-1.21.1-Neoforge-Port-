@@ -16,9 +16,9 @@ import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSoundFile
 import liltojustice.trueadaptivemusic.client.trigger.event.ErrorEvent
 import liltojustice.trueadaptivemusic.client.trigger.predicate.ErrorPredicate
 import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
-import net.fabricmc.loader.api.FabricLoader
-import net.minecraft.text.Text
-import net.minecraft.util.JsonHelper
+import net.neoforged.fml.ModList
+import net.minecraft.network.chat.Component
+import net.minecraft.util.GsonHelper
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -214,7 +214,7 @@ class MusicPack private constructor(
         }
         catch (e: Exception) {
             TAMClient.errorToast(
-                Text.translatableWithFallback(
+                Component.translatableWithFallback(
                     "trueadaptivemusic.export_failure", "Failed to export pack! Try again."),
                 e.message
             )
@@ -229,7 +229,7 @@ class MusicPack private constructor(
         val nonOggFiles = getPackAssetNames().filter { name -> Path(name).extension != "ogg" }
         if (!TAMClient.hasFFmpeg && nonOggFiles.isNotEmpty()) {
             validation.addWarning(
-                Text.translatableWithFallback(
+                Component.translatableWithFallback(
                     "trueadaptivemusic.ogg_warning",
                     "This pack contains music that is not 'ogg' type (the only type supported by " +
                             "minecraft). This music will not play unless FFmpeg is installed on your system. You " +
@@ -250,9 +250,9 @@ class MusicPack private constructor(
             }
         }
 
-        val loader = FabricLoader.getInstance()
+        val modList = ModList.get()
         meta.requiredBridgeMods.forEach { mod ->
-            if (!loader.isModLoaded(mod.id)) {
+            if (!modList.isLoaded(mod.id)) {
                 validation.addWarning("This pack requires the mod ${mod.name} (${mod.id}) which could not be found.")
             }
         }
@@ -283,7 +283,7 @@ class MusicPack private constructor(
 
     companion object {
         private val jsonErrorText =
-            Text.translatableWithFallback(
+            Component.translatableWithFallback(
                 "trueadaptivemusic.json_error",
                 "Could not load pack due to json error:"
             ).string
@@ -362,7 +362,7 @@ class MusicPack private constructor(
 
             val rules = try {
                 MusicTree.fromJson(
-                    JsonHelper.deserialize(rulesFile.inputStream().reader()), playableSounds)
+                    GsonHelper.parse(rulesFile.inputStream().reader()), playableSounds)
             }
             catch (e: JsonParseException) {
                 preValidation.addError("$jsonErrorText\n$e")
@@ -415,7 +415,7 @@ class MusicPack private constructor(
                 val rules = try {
                     zipFile.getInputStream(rulesFile).use {
                         MusicTree.fromJson(
-                            JsonHelper.deserialize(it.reader()) , playableSounds)
+                            GsonHelper.parse(it.reader()) , playableSounds)
                     }
                 }
                 catch (e: JsonParseException) {

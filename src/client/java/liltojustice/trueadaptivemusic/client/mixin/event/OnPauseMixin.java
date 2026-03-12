@@ -2,19 +2,19 @@ package liltojustice.trueadaptivemusic.client.mixin.event;
 
 import liltojustice.trueadaptivemusic.client.TAMClient;
 import liltojustice.trueadaptivemusic.client.trigger.event.types.OnPauseEvent;
-import fgo.fgo;
+import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(fgo.class)
+@Mixin(Minecraft.class)
 public class OnPauseMixin {
     @Inject(
-            method = "openGameMenu",
+            method = "pauseGame",
             at = @At("HEAD"))
     public void openGameMenu(boolean pauseOnly, CallbackInfo ci) {
-        if (fgo.getInstance().currentScreen == null) {
+        if (Minecraft.getInstance().screen == null) {
             TAMClient.INSTANCE.invokeMusicEvent(OnPauseEvent.class);
         }
     }

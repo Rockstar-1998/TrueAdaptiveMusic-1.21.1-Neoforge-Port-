@@ -1,13 +1,14 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
-import net.minecraft.world.GameMode
+import net.minecraft.client.Minecraft
+import net.minecraft.world.level.GameType
 
-class GameModePredicate(private val gameMode: GameMode): MusicPredicate() {
+class GameModePredicate(private val gameMode: GameType): MusicPredicate() {
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
-        val currentGameMode = client.networkHandler?.getPlayerListEntry(client.player?.uuid ?: return false)?.gameMode
+        val client = Minecraft.getInstance()
+        val currentGameMode =
+            client.connection?.getPlayerInfo(client.player?.uuid ?: return false)?.gameMode
 
         return currentGameMode == gameMode
     }

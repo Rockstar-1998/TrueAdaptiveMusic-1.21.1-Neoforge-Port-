@@ -1,13 +1,15 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.components.BossHealthOverlay
+import net.minecraft.client.gui.components.LerpingBossEvent
 
 class BossHealthPredicate(private val direction: Direction, private val healthPercentage: Int): MusicPredicate() {
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
-        return client.inGameHud.bossBarHud.bossBars.any { bossBar ->
-            healthTest((healthPercentage / 100F), direction, bossBar.value.percent) }
+        val client = Minecraft.getInstance()
+        return getBossEvents(client).any { bossBar ->
+            healthTest((healthPercentage / 100F), direction, bossBar.progress) }
     }
 
     override fun getTickRate(): Int {
@@ -26,6 +28,16 @@ class BossHealthPredicate(private val direction: Direction, private val healthPe
                 Direction.Greater -> currentPercentage > thresholdPercentage
                 Direction.Lesser -> currentPercentage < thresholdPercentage
             }
+        }
+
+        private fun getBossEvents(client: Minecraft): Collection<LerpingBossEvent> {
+            val bossOverlay = client.gui.bossOverlay
+            return runCatching {
+                val field = BossHealthOverlay::class.java.getDeclaredField("events")
+                field.isAccessible = true
+                val map = field.get(bossOverlay) as? Map<*, *> ?: return emptyList()
+                map.values.filterIsInstance<LerpingBossEvent>()
+            }.getOrDefault(emptyList())
         }
     }
 

@@ -2,14 +2,14 @@ package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.identifier.EntityTypeIdentifier
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
-import net.minecraft.entity.Entity
-import net.minecraft.entity.mob.GuardianEntity
-import net.minecraft.entity.mob.HostileEntity
-import net.minecraft.entity.mob.MobEntity
-import net.minecraft.entity.mob.PhantomEntity
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.util.math.Vec3d
+import net.minecraft.client.Minecraft
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.monster.Guardian
+import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.Mob
+import net.minecraft.world.entity.monster.Phantom
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.phys.Vec3
 import java.util.*
 import kotlin.concurrent.schedule
 import kotlin.math.PI
@@ -27,21 +27,22 @@ class CombatPredicate(
     private val mobEntityTranslationKeys = mobEntities.map { mobEntity -> mobEntity.toTranslationKey("entity") }
 
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
+        val client = Minecraft.getInstance()
         val playerEntity = client.player ?: return false
-        val world = client.world ?: return false
-        val verticalFov = client.options.fov.value.toDouble() / DEG_PER_RAD
+        val world = client.level ?: return false
+        val verticalFov = client.options.fov().get().toDouble() / DEG_PER_RAD
         val horizontalFov = 2 * atan(tan(verticalFov / 2) * client.window.width / client.window.height)
-        val verticalAngle = acos(playerEntity.rotationVecClient.y)
-        val horizontalAngle = acos(playerEntity.rotationVecClient.x)
+        val viewVector = playerEntity.lookAngle
+        val verticalAngle = acos(viewVector.y)
+        val horizontalAngle = acos(viewVector.x)
 
-        val entityGroups = mutableListOf<List<MobEntity>>()
+        val entityGroups = mutableListOf<List<Mob>>()
 
-        entityGroups.add(world.entities.mapNotNull { it as? HostileEntity }.filter { filterEntity(it) })
-        entityGroups.add(world.entities.mapNotNull { it as? PhantomEntity }.filter { filterEntity(it) })
+        entityGroups.add(world.entitiesForRendering().mapNotNull { it as? Monster }.filter { filterEntity(it) })
+        entityGroups.add(world.entitiesForRendering().mapNotNull { it as? Phantom }.filter { filterEntity(it) })
 
         for (validEntities in entityGroups) {
-            for (mobEntity: MobEntity in validEntities) {
+            for (mobEntity: Mob in validEntities) {
                 if (processMob(mobEntity, playerEntity, verticalAngle, horizontalAngle, verticalFov, horizontalFov)) {
                     return true
                 }
@@ -55,8 +56,8 @@ class CombatPredicate(
         return super.getTickRate() * 2
     }
 
-    private fun processMob(mobEntity: MobEntity, playerEntity: PlayerEntity, verticalAngle: Double, horizontalAngle: Double, verticalFov: Double, horizontalFov: Double): Boolean {
-        val relativeMobEntityPos = mobEntity.pos.subtract(playerEntity.pos)
+    private fun processMob(mobEntity: Mob, playerEntity: Player, verticalAngle: Double, horizontalAngle: Double, verticalFov: Double, horizontalFov: Double): Boolean {
+        val relativeMobEntityPos = mobEntity.position().subtract(playerEntity.position())
         val relativeMobEntityPosN = relativeMobEntityPos.normalize()
 
         val mobVerticalAngle = acos(relativeMobEntityPosN.y)
@@ -86,15 +87,15 @@ class CombatPredicate(
             .takeIf { it.isNotEmpty() }
             ?.let {
                 if (blacklist)
-                    it.none { mobEntity -> mobEntity == entity.type.translationKey }
+                    it.none { mobEntity -> mobEntity == entity.type.descriptionId }
                 else
-                    it.any { mobEntity -> mobEntity == entity.type.translationKey }
+                    it.any { mobEntity -> mobEntity == entity.type.descriptionId }
             }
             ?: true
     }
 
     companion object: MusicPredicateCompanion {
-        private val baseAxialDistance = Vec3d(20.0, 20.0, 20.0)
+        private val baseAxialDistance = Vec3(20.0, 20.0, 20.0)
         private const val AGGRO_TIMER_SECONDS = 4L
         private const val DEG_PER_RAD = 180.0 / PI
 
@@ -106,25 +107,26 @@ class CombatPredicate(
             )
 
         private fun isValidAttacker(
-            mobEntity: MobEntity, playerEntity: PlayerEntity, displacement: Vec3d): Boolean {
+            mobEntity: Mob, playerEntity: Player, displacement: Vec3): Boolean {
             val closeEnough = closeEnough(
                     displacement,
-                    Vec3d(mobEntity.boundingBox.lengthX,
-                        mobEntity.boundingBox.lengthY,
-                        mobEntity.boundingBox.lengthZ
+                    Vec3(
+                        mobEntity.boundingBox.xsize,
+                        mobEntity.boundingBox.ysize,
+                        mobEntity.boundingBox.zsize
                     )
             )
-            return (mobEntity.isAttacking && closeEnough) ||
-                    ((mobEntity as? GuardianEntity)?.let { it.beamTarget?.id == playerEntity.id } == true) ||
-                    ((mobEntity is PhantomEntity) && closeEnough)
+            return (mobEntity.isAggressive && closeEnough) ||
+                    ((mobEntity as? Guardian)?.let { it.activeAttackTarget?.id == playerEntity.id } == true) ||
+                    ((mobEntity is Phantom) && closeEnough)
         }
 
-        private fun closeEnough(displacement: Vec3d, attackerSize: Vec3d): Boolean
+        private fun closeEnough(displacement: Vec3, attackerSize: Vec3): Boolean
         {
-            val axialDistance = Vec3d(
+            val axialDistance = Vec3(
                 abs(displacement.x), abs(displacement.y), abs(displacement.z))
             val scaledAttackerMinDistance = baseAxialDistance
-                .multiply(Vec3d(cbrt(attackerSize.x), cbrt(attackerSize.y), cbrt(attackerSize.z)))
+                .multiply(Vec3(cbrt(attackerSize.x), cbrt(attackerSize.y), cbrt(attackerSize.z)))
             return axialDistance.x < scaledAttackerMinDistance.x
                     && axialDistance.y < scaledAttackerMinDistance.y
                     && axialDistance.z < scaledAttackerMinDistance.z

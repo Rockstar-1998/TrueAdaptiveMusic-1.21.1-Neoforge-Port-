@@ -6,13 +6,13 @@ import liltojustice.trueadaptivemusic.client.sound.engine.VolumeManager
 import liltojustice.trueadaptivemusic.client.sound.instance.TAMSoundInstance
 import liltojustice.trueadaptivemusic.client.sound.engine.SoundSystem
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSound
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.concurrent.schedule
 import kotlin.math.min
 
-internal class MusicPlayer(private val client: MinecraftClient) {
+internal class MusicPlayer(private val client: Minecraft) {
     private val soundSystem = SoundSystem(client.options)
     private val volumeManager = VolumeManager(soundSystem)
     private val tracks = mutableMapOf<String, Track>()
@@ -64,7 +64,7 @@ internal class MusicPlayer(private val client: MinecraftClient) {
         }
 
         volumeManager.tick()
-        soundSystem.tick(client.player?.yaw)
+        soundSystem.tick(client.player?.yRot)
     }
 
     fun crossfadeTracks(fadeOutTrackName: String, fadeInTrackName: String) {

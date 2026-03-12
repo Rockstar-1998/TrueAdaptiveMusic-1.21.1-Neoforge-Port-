@@ -5,25 +5,25 @@ import liltojustice.trueadaptivemusic.client.music.tree.MusicTree
 import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
 import liltojustice.trueadaptivemusic.client.sound.playable.PlayableSound
 import liltojustice.trueadaptivemusic.client.trigger.event.types.OnEnterPredicateEvent
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.option.SimpleOption
-import net.minecraft.client.sound.PositionedSoundInstance
-import net.minecraft.sound.SoundCategory
-import net.minecraft.util.math.Vec3d
+import net.minecraft.client.Minecraft
+import net.minecraft.client.OptionInstance
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.sounds.SoundSource
+import net.minecraft.world.phys.Vec3
 import kotlin.math.max
 import kotlin.reflect.KClass
 
-class MusicManager(private val client: MinecraftClient) {
+class MusicManager(private val client: Minecraft) {
     var playingEvent: MusicEvent? = null
         private set
 
     private val musicPlayer = MusicPlayer(client)
     private var currentMusicPredicateId: String = ""
     private var oldMusicPredicateId: String = ""
-    private var musicVolumeOption: SimpleOption<Double> =
-        client.options.getSoundVolumeOption(SoundCategory.MUSIC)
-    private var masterVolumeOption: SimpleOption<Double> =
-        client.options.getSoundVolumeOption(SoundCategory.MASTER)
+    private var musicVolumeOption: OptionInstance<Double> =
+        client.options.getSoundSourceOptionInstance(SoundSource.MUSIC)
+    private var masterVolumeOption: OptionInstance<Double> =
+        client.options.getSoundSourceOptionInstance(SoundSource.MASTER)
     private var eventPool: List<MusicEvent> = emptyList()
     private var lastMusic: PlayableSound? = null
     private var lastAmbience: PlayableSound? = null
@@ -60,7 +60,7 @@ class MusicManager(private val client: MinecraftClient) {
     }
 
     fun stop() {
-        client.musicTracker.setCurrent(null)
+        client.getMusicManager().stopPlaying()
         musicPlayer.stopAll()
         currentMusicPredicateId = ""
         oldMusicPredicateId = ""
@@ -69,7 +69,7 @@ class MusicManager(private val client: MinecraftClient) {
     }
 
     fun tick(treeResult: MusicTree.Result, packOptions: MusicPackOptions) {
-        if (masterVolumeOption.value == 0.0) {
+        if (masterVolumeOption.get() == 0.0) {
             return
         }
 
@@ -145,7 +145,7 @@ class MusicManager(private val client: MinecraftClient) {
         }
 
         if (shouldStop) {
-            client.musicTracker.setCurrent(null)
+            client.getMusicManager().stopPlaying()
             return
         }
 
@@ -188,7 +188,7 @@ class MusicManager(private val client: MinecraftClient) {
         return (identifier != currentMusicPredicateId
                 || (!musicPlayer.isTrackPlaying(mainTrack)
                         && !musicPlayer.isTrackDelayed(mainTrack)))
-                && musicVolumeOption.value > 0
+                && musicVolumeOption.get() > 0
     }
 
     private fun shouldKeepPlaying(
@@ -301,28 +301,20 @@ class MusicManager(private val client: MinecraftClient) {
         private const val PAUSE_VOLUME = 0.3F
         private const val BACKGROUND_VOLUME = 0.1F
 
-        private fun isPaused(client: MinecraftClient): Boolean {
-            return client.world != null && client.currentScreen?.shouldPause() ?: false
+        private fun isPaused(client: Minecraft): Boolean {
+            return client.level != null && (client.screen?.isPauseScreen() ?: false)
         }
 
         private fun shouldStopMain(
-            client: MinecraftClient, musicPlayer: MusicPlayer, musicToPlay: List<PlayableSound>): Boolean {
+            client: Minecraft, musicPlayer: MusicPlayer, musicToPlay: List<PlayableSound>): Boolean {
             return musicToPlay.isEmpty() ||
                     jukeboxPlaying(client) ||
                     musicPlayer.isTrackPlaying(ON_DEMAND_TRACK)
         }
 
-        private fun jukeboxPlaying(client: MinecraftClient): Boolean {
-            return client.soundManager.soundSystem.sources.keys.any {
-                    instance ->
-                ((instance.category == SoundCategory.RECORDS)
-                        && (instance is PositionedSoundInstance)
-                        && (client.player?.let {
-                    Vec3d(instance.x, instance.y, instance.z)
-                        .squaredDistanceTo(it.pos) <
-                            (instance.sound?.attenuation ?: 0) * (instance.sound?.attenuation ?: 0) * 4
-                } ?: false))
-            }
+        private fun jukeboxPlaying(client: Minecraft): Boolean {
+            // SoundManager internals are not exposed in Mojang mappings; fall back to "no jukebox".
+            return false
         }
 
         private fun getPseudoRandomTrack(musicToPlay: List<PlayableSound>, lastMusic: PlayableSound?): PlayableSound {

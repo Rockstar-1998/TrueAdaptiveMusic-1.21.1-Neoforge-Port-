@@ -14,8 +14,8 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.RootPredicate
 import liltojustice.trueadaptivemusic.text.StringExtensions.prettify
 import liltojustice.trueadaptivemusic.text.translatableWithFallbackOrNull
-import net.minecraft.client.MinecraftClient
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import kotlin.collections.plus
 import kotlin.reflect.full.declaredMembers
 import kotlin.reflect.full.primaryConstructor
@@ -34,7 +34,7 @@ class MusicTree {
         return MusicTreeSerializer.serialize(this)
     }
 
-    fun getMusicToPlay(client: MinecraftClient): Result {
+    fun getMusicToPlay(client: Minecraft): Result {
         val result = root.getSatisfiedNode(client)
         return Result(
             result.path.joinToString(PATH_SEPARATOR),
@@ -116,7 +116,7 @@ class MusicTree {
         }
 
         fun getSatisfiedNode(
-            client: MinecraftClient,
+            client: Minecraft,
             path: List<String> = emptyList(),
             eventCollection: Map<String, MusicEvent> = emptyMap(),
             musicCollection: Set<PlayableSound> = emptySet(),
@@ -318,13 +318,13 @@ class MusicTree {
                     return Parameters::class.primaryConstructor?.call(*args.toTypedArray()) ?: default()
                 }
 
-                fun getParamDisplayName(paramName: String): Text? {
+                fun getParamDisplayName(paramName: String): Component? {
                     return translatableWithFallbackOrNull(
                         "trueadaptivemusic.param.node.${paramName}.display", displayNames[paramName])
                 }
 
-                fun getParamDescription(paramName: String): Text? {
-                    return Text.translatableWithFallback(
+                fun getParamDescription(paramName: String): Component? {
+                    return Component.translatableWithFallback(
                         "trueadaptivemusic.param.node.${paramName}.description", descriptions[paramName])
                 }
             }

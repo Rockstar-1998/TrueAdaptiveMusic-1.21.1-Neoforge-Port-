@@ -5,53 +5,46 @@ import liltojustice.trueadaptivemusic.client.music.pack.MusicLoadException
 import liltojustice.trueadaptivemusic.client.sound.FFmpeg
 import liltojustice.trueadaptivemusic.client.sound.stream.FFmpegAudioStream
 import liltojustice.trueadaptivemusic.client.sound.stream.TruncatedAudioStream
-import net.minecraft.client.sound.AudioStream
-import net.minecraft.client.sound.OggAudioStream
-import net.minecraft.client.sound.Sound
-import net.minecraft.client.sound.SoundInstance
-import net.minecraft.client.sound.SoundManager
-import net.minecraft.client.sound.WeightedSoundSet
-import net.minecraft.sound.SoundCategory
-import net.minecraft.util.Identifier
+import net.minecraft.client.sounds.AudioStream
+import net.minecraft.client.sounds.JOrbisAudioStream
+import net.minecraft.client.resources.sounds.Sound
+import net.minecraft.client.resources.sounds.SoundInstance
+import net.minecraft.client.sounds.SoundManager
+import net.minecraft.client.sounds.WeighedSoundEvents
+import net.minecraft.sounds.SoundSource
+import net.minecraft.resources.ResourceLocation
 import java.io.InputStream
 
 abstract class TAMSoundInstance(
-    val isAmbient: Boolean, val isLooping: Boolean, val loopStartPoint: UInt): SoundInstance {
+    val isAmbient: Boolean, val looping: Boolean, val loopStartPoint: UInt): SoundInstance {
     var desiredVolume = 1F
     abstract fun getAudioStream(): AudioStream?
-    override fun getId(): Identifier? {
+
+    override fun getLocation(): ResourceLocation {
+        return ResourceLocation.fromNamespaceAndPath("trueadaptivemusic", "file")
+    }
+
+    override fun resolve(soundManager: SoundManager): WeighedSoundEvents? {
         return null
     }
 
-    override fun getSoundSet(soundManager: SoundManager?): WeightedSoundSet? {
-        return null
+    override fun getSound(): Sound {
+        return SoundManager.EMPTY_SOUND
     }
 
-    override fun getSound(): Sound? {
-        return Sound(
-            Identifier.of("trueadaptivemusic", "file"),
-            { 1F },
-            { 1F },
-            0,
-            Sound.RegistrationType.FILE,
-            true,
-            false,
-            0)
+    override fun getSource(): SoundSource {
+        return if (isAmbient) SoundSource.AMBIENT else SoundSource.MUSIC
     }
 
-    override fun getCategory(): SoundCategory? {
-        return null
-    }
-
-    override fun isRepeatable(): Boolean {
-        return false
+    override fun isLooping(): Boolean {
+        return looping
     }
 
     override fun isRelative(): Boolean {
         return false
     }
 
-    override fun getRepeatDelay(): Int {
+    override fun getDelay(): Int {
         return 0
     }
 
@@ -75,8 +68,8 @@ abstract class TAMSoundInstance(
         return 0.0
     }
 
-    override fun getAttenuationType(): SoundInstance.AttenuationType? {
-        return null
+    override fun getAttenuation(): SoundInstance.Attenuation {
+        return SoundInstance.Attenuation.NONE
     }
 
     companion object {
@@ -91,7 +84,7 @@ abstract class TAMSoundInstance(
         ): AudioStream {
             try {
                 return if (!TAMClient.hasFFmpeg && extension == "ogg") {
-                    TruncatedAudioStream(OggAudioStream(inputStreamGetter()))
+                    TruncatedAudioStream(JOrbisAudioStream(inputStreamGetter()))
                 }
                 else {
                     val loudnessUnits = if (isAmbient)

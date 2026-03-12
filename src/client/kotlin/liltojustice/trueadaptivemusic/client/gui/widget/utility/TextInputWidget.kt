@@ -1,12 +1,12 @@
 package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.widget.ClickableWidget
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.client.sound.SoundManager
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.AbstractWidget
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.sounds.SoundManager
+import net.minecraft.network.chat.Component
 import kotlin.math.min
 
 class TextInputWidget(
@@ -15,23 +15,23 @@ class TextInputWidget(
     placeholder: String = "",
     x: Int = 0,
     y: Int = 0)
-    : ClickableWidget(x, y, Int.MAX_VALUE, HEIGHT, Text.literal(prompt)) {
-    private val textRenderer = MinecraftClient.getInstance().textRenderer
+    : AbstractWidget(x, y, Int.MAX_VALUE, HEIGHT, Component.literal(prompt)) {
+    private val textRenderer = Minecraft.getInstance().font
     private val promptWidget = run {
         val widget = ClickableTextWidget(prompt)
         widget.disableBold()
 
         widget
     }
-    private val fieldWidget = TextFieldWidget(
-        textRenderer, 0, 0, Int.MAX_VALUE, HEIGHT, Text.literal(placeholder))
+    private val fieldWidget = EditBox(
+        textRenderer, 0, 0, Int.MAX_VALUE, HEIGHT, Component.literal(placeholder))
     var text: String
-        get() { return fieldWidget.text }
-        set(value) { fieldWidget.text = value }
+        get() { return fieldWidget.value }
+        set(value) { fieldWidget.value = value }
     var updateText: String = ""
 
     init {
-        fieldWidget.setChangedListener { text -> updateText = onChange(this, text).ifEmpty { "" } }
+        fieldWidget.setResponder { text -> updateText = onChange(this, text).ifEmpty { "" } }
         text = placeholder
     }
 
@@ -50,7 +50,7 @@ class TextInputWidget(
         return fieldWidget.keyReleased(keyCode, scanCode, modifiers)
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         if (fieldWidget.isFocused != isFocused) {
             fieldWidget.isFocused = isFocused
         }
@@ -64,15 +64,15 @@ class TextInputWidget(
         promptWidget.y = y
         fieldWidget.y = y
         promptWidget.width = min(
-            textRenderer.getWidth(promptWidget.text), width - fieldWidget.width - PADDING)
+            textRenderer.width(promptWidget.text), width - fieldWidget.width - PADDING)
         fieldWidget.x = promptWidget.x + promptWidget.width + PADDING
-        fieldWidget.width = textRenderer.getWidth(text) + 30
+        fieldWidget.width = textRenderer.width(text) + 30
 
         promptWidget.render(context, mouseX, mouseY, delta)
         fieldWidget.render(context, mouseX, mouseY, delta)
     }
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 
     companion object {
@@ -80,3 +80,4 @@ class TextInputWidget(
         private const val PADDING = 5
     }
 }
+

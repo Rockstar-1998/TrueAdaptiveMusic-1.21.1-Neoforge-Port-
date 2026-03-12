@@ -1,9 +1,9 @@
 package liltojustice.trueadaptivemusic.client.gui.widget.utility
 
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.text.Text
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.network.chat.Component
 
 class MultiSelectDropdownWidget<TKey>(
     private val options: List<TKey>,
@@ -15,7 +15,7 @@ class MultiSelectDropdownWidget<TKey>(
     private val notSelectedPlaceholder: String? = null,
     alreadySelected: List<TKey> = listOf(),
     private val onHoverOption: (option: String?) -> Unit = {},
-    private val tooltipText: Text? = null,
+    private val tooltipText: Component? = null,
     x: Int = 0,
     y: Int = 0
 )
@@ -48,7 +48,7 @@ class MultiSelectDropdownWidget<TKey>(
         return result
     }
 
-    override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderWidget(context: GuiGraphics?, mouseX: Int, mouseY: Int, delta: Float) {
         addWidgetFromRender(
             {
                 DropdownWidget(
@@ -90,8 +90,8 @@ class MultiSelectDropdownWidget<TKey>(
                         onMouseOn = { option -> onHoverOption(option.text) },
                         onMouseOff = { option -> onHoverOption(null) })
                     widget.setTooltip(
-                        Tooltip.of(
-                            Text.translatableWithFallback(
+                        Tooltip.create(
+                            Component.translatableWithFallback(
                                 "trueadaptivemusic.click_to_remove", "Click to remove")
                         )
                     )
@@ -105,6 +105,7 @@ class MultiSelectDropdownWidget<TKey>(
         fitToChildrenHeight()
     }
 
-    override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
+    override fun updateWidgetNarration(builder: NarrationElementOutput) {
     }
 }
+

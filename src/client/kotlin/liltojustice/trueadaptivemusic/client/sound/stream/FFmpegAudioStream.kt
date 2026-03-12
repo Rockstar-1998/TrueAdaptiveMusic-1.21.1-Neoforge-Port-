@@ -2,7 +2,7 @@ package liltojustice.trueadaptivemusic.client.sound.stream
 
 import liltojustice.trueadaptivemusic.Constants
 import liltojustice.trueadaptivemusic.client.TAMClient
-import net.minecraft.client.sound.AudioStream
+import net.minecraft.client.sounds.AudioStream
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

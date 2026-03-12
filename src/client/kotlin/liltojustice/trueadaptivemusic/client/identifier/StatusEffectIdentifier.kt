@@ -1,16 +1,16 @@
 package liltojustice.trueadaptivemusic.client.identifier
 
-import net.minecraft.registry.Registries
-import net.minecraft.util.Identifier
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.ResourceLocation
 
-class StatusEffectIdentifier(id: Identifier): TypedIdentifier(id) {
+class StatusEffectIdentifier(id: ResourceLocation): TypedIdentifier(id) {
     override fun toPrefixedTranslationKey(): String {
-        return id.toTranslationKey("effect")
+        return id.toLanguageKey("effect")
     }
 
     companion object: TypedIdentifierCompanion() {
-        override fun getRegistryIds(): List<Identifier> {
-            return Registries.STATUS_EFFECT.ids.toList()
+        override fun getRegistryIds(): List<ResourceLocation> {
+            return BuiltInRegistries.MOB_EFFECT.keySet().toList()
         }
     }
 }

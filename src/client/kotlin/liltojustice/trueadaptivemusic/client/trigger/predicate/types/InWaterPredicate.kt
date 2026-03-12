@@ -1,14 +1,14 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate.types
 
 import liltojustice.trueadaptivemusic.client.trigger.predicate.MusicPredicate
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 class InWaterPredicate: MusicPredicate() {
     private var tickBuffer = 0
 
     override fun test(): Boolean {
-        val client = MinecraftClient.getInstance()
-        val result = client.player?.isTouchingWater ?: false
+        val client = Minecraft.getInstance()
+        val result = client.player?.isInWater ?: false
         if (result) {
             tickBuffer = GRACE_PERIOD_TICKS
         }

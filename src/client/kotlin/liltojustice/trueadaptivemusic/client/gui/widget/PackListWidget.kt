@@ -3,34 +3,34 @@ package liltojustice.trueadaptivemusic.client.gui.widget
 import liltojustice.trueadaptivemusic.client.TAMClient
 import liltojustice.trueadaptivemusic.client.music.pack.MusicPack
 import liltojustice.trueadaptivemusic.client.music.pack.MusicPackValidation
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.client.gui.widget.AlwaysSelectedEntryListWidget
-import net.minecraft.client.gui.widget.ButtonWidget
-import net.minecraft.text.Text
-import net.minecraft.util.Colors
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.client.gui.components.ObjectSelectionList
+import net.minecraft.client.gui.components.Button
+import net.minecraft.network.chat.Component
+import net.minecraft.util.CommonColors
 
 class PackListWidget(
-    client: MinecraftClient,
+    private val minecraft: Minecraft,
     width: Int,
     height: Int,
     top: Int,
     itemHeight: Int,
     private val onSelectPack: (selectedPack: MusicPack?) -> Unit = {})
-    : AlwaysSelectedEntryListWidget<PackListWidget.Entry>(client, width, height, top, itemHeight) {
+    : ObjectSelectionList<PackListWidget.Entry>(minecraft, width, height, top, itemHeight) {
     init {
         init()
     }
 
     fun init() {
         clearEntries()
-        val vanillaEntry = Entry(this, client, null, onSelectPack)
+        val vanillaEntry = Entry(this, minecraft, null, onSelectPack)
         addEntry(vanillaEntry)
         setSelected(vanillaEntry)
         MusicPack.loadAllPacks()
             .forEach { musicPack ->
-                val newEntry = Entry(this, client, musicPack, onSelectPack)
+                val newEntry = Entry(this, minecraft, musicPack, onSelectPack)
                 addEntry(newEntry)
                 if (musicPack.packName == TAMClient.musicPack?.packName) {
                     setSelected(newEntry)
@@ -40,21 +40,21 @@ class PackListWidget(
 
     class Entry(
         private val packListWidget: PackListWidget,
-        private val client: MinecraftClient,
+        private val client: Minecraft,
         private val musicPack: MusicPack?,
         private val onSelectPack: (selectedPack: MusicPack?) -> Unit)
-        : AlwaysSelectedEntryListWidget.Entry<Entry>() {
+        : ObjectSelectionList.Entry<Entry>() {
         private val issuesButton =
             if (musicPack?.validationMessages?.isEmpty() != false)
                 null
             else
-                ButtonWidget.Builder(issuesText) {}
-                .tooltip(Tooltip.of(getValidationText(musicPack.validationMessages)))
-                .width(client.textRenderer.getWidth(issuesText) + 5)
+                Button.Builder(issuesText) {}
+                .tooltip(Tooltip.create(getValidationText(musicPack.validationMessages)))
+                .width(client.font.width(issuesText) + 5)
                 .build()
 
         override fun render(
-            context: DrawContext?,
+            context: GuiGraphics?,
             index: Int,
             y: Int,
             x: Int,
@@ -66,13 +66,13 @@ class PackListWidget(
             tickDelta: Float
         ) {
             musicPack?.let {
-                context?.drawText(
-                    client.textRenderer, it.packName, x + 3, y + 6, Colors.WHITE, false)
-                context?.drawText(
-                    client.textRenderer,
+                context?.drawString(
+                    client.font, it.packName, x + 3, y + 6, CommonColors.WHITE, false)
+                context?.drawString(
+                    client.font,
                     it.options.description,
                     x + 3, y + 14 + 3,
-                    Colors.GRAY,
+                    CommonColors.GRAY,
                     false)
 
                 issuesButton?.let {
@@ -83,25 +83,25 @@ class PackListWidget(
             }
 
             if (musicPack == null) {
-                context?.drawText(
-                    client.textRenderer,
-                    Text.translatableWithFallback("trueadaptivemusic.vanilla", "Vanilla"),
+                context?.drawString(
+                    client.font,
+                    Component.translatableWithFallback("trueadaptivemusic.vanilla", "Vanilla"),
                     x + 3,
                     y + 6,
-                    Colors.WHITE,
+                    CommonColors.WHITE,
                     false)
-                context?.drawText(
-                    client.textRenderer,
-                    Text.translatableWithFallback(
+                context?.drawString(
+                    client.font,
+                    Component.translatableWithFallback(
                         "trueadaptivemusic.disable_tam", "Disable TrueAdaptiveMusic"),
                     x + 3, y + 14 + 3,
-                    Colors.GRAY,
+                    CommonColors.GRAY,
                     false)
             }
         }
 
         override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-            if (packListWidget.selectedOrNull == this) {
+            if (packListWidget.getSelected() == this) {
                 return true
             }
 
@@ -116,20 +116,20 @@ class PackListWidget(
             return true
         }
 
-        override fun getNarration(): Text {
-            return Text.empty()
+        override fun getNarration(): Component {
+            return Component.empty()
         }
 
         companion object {
-            private val issuesText = Text.translatableWithFallback(
+            private val issuesText = Component.translatableWithFallback(
                 "trueadaptivemusic.issues_found", "Issues Found")
-            private fun getValidationText(validation: List<MusicPackValidation.ValidationMessage>): Text {
+            private fun getValidationText(validation: List<MusicPackValidation.ValidationMessage>): Component {
                 val warnings = validation.filter { it.type == MusicPackValidation.ValidationMessage.Type.Warning }
                 val errors = validation.filter { it.type == MusicPackValidation.ValidationMessage.Type.Error }
-                val result = Text.empty()
+                val result = Component.empty()
                 if (warnings.isNotEmpty()) {
                     result.append(
-                        Text.translatableWithFallback(
+                        Component.translatableWithFallback(
                             "trueadaptivemusic.warning_count",
                             "${warnings.size} warning(s)",
                             warnings.size.toString()
@@ -138,12 +138,12 @@ class PackListWidget(
                 }
 
                 if (warnings.isNotEmpty() && errors.isNotEmpty()) {
-                    result.append(" ${Text.translatableWithFallback("trueadaptivemusic.and", "and")} ")
+                    result.append(" ${Component.translatableWithFallback("trueadaptivemusic.and", "and")} ")
                 }
 
                 if (errors.isNotEmpty()) {
                     result.append(
-                        Text.translatableWithFallback(
+                        Component.translatableWithFallback(
                             "trueadaptivemusic.error_count",
                             "${errors.size} error(s)",
                             errors.size.toString()
@@ -162,3 +162,5 @@ class PackListWidget(
         }
     }
 }
+
+

@@ -1,11 +1,12 @@
 package liltojustice.trueadaptivemusic.client
 
-import liltojustice.trueadaptivemusic.client.gui.widget.utility.CheckboxWidget
+import liltojustice.trueadaptivemusic.TrueAdaptiveMusic
 import liltojustice.trueadaptivemusic.client.gui.widget.utility.DropdownWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.utility.EmptyClickableWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.utility.MultiSelectDropdownWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.utility.SliderWidget
 import liltojustice.trueadaptivemusic.client.gui.widget.utility.TextInputWidget
+import liltojustice.trueadaptivemusic.client.gui.screen.MainScreen
 import liltojustice.trueadaptivemusic.client.identifier.TypedIdentifier
 import liltojustice.trueadaptivemusic.client.trigger.event.types.OnAdvancementGetEvent
 import liltojustice.trueadaptivemusic.client.trigger.event.types.OnBossDefeatEvent
@@ -49,18 +50,30 @@ import liltojustice.trueadaptivemusic.client.trigger.predicate.types.StructureSe
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.TitleScreenPredicate
 import liltojustice.trueadaptivemusic.client.trigger.predicate.types.WeatherPredicate
 import liltojustice.trueadaptivemusic.text.StringExtensions.prettify
-import net.fabricmc.api.ClientModInitializer
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.gui.tooltip.Tooltip
-import net.minecraft.text.Text
+import net.neoforged.fml.ModList
+import net.neoforged.neoforge.client.event.ClientTickEvent
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory
+import net.neoforged.neoforge.common.NeoForge
+import net.minecraft.client.gui.components.Tooltip
+import net.minecraft.client.gui.components.Checkbox
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.typeOf
 import kotlin.toString
 
-class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
-    override fun onInitializeClient() {
+object TrueAdaptiveMusicClientInitializer {
+    @JvmStatic
+    fun init() {
+        val container = ModList.get().getModContainerById(TrueAdaptiveMusic.MOD_ID)
+            .orElseThrow { IllegalStateException("Mod container for ${TrueAdaptiveMusic.MOD_ID} not found") }
+        container.registerExtensionPoint(
+            IConfigScreenFactory::class.java,
+            IConfigScreenFactory { _, parent -> MainScreen(parent) }
+        )
+
         TAMClient.registerPredicate("biome", BiomePredicate::class)
         TAMClient.registerPredicate("boss", BossPredicate::class)
         TAMClient.registerPredicate("combat", CombatPredicate::class)
@@ -104,8 +117,8 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         TAMClient.registerEvent("on_wake_up", OnWakeUpEvent::class)
         TAMClient.registerEvent("on_pause", OnPauseEvent::class)
 
-        ClientTickEvents.END_CLIENT_TICK.register { client ->
-            TAMClient.tick(client)
+        NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post::class.java) { _ ->
+            TAMClient.tick(TAMClient.minecraftClient)
         }
 
         TAMClient.registerInputWidget(
@@ -113,15 +126,15 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         ) { prompt, screen, outArgs, arg, tooltipText, onChange ->
             val result = TextInputWidget(
                 prompt,
-                { widget, text ->
-                    outArgs[arg.index] = text
+                { widget, Component ->
+                    outArgs[arg.index] = Component
                     onChange()
                     ""
                 },
                 outArgs[arg.index]?.toString() ?: ""
             )
             tooltipText?.let {
-                result.setTooltip(Tooltip.of(it))
+                result.setTooltip(Tooltip.create(it))
             }
 
             result
@@ -132,21 +145,21 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         ) { prompt, screen, outArgs, arg, tooltipText, onChange ->
             val result = TextInputWidget(
                 prompt,
-                { widget, text ->
-                    if (text.isBlank() || text == "-") {
+                { widget, Component ->
+                    if (Component.isBlank() || Component == "-") {
                         return@TextInputWidget "0"
                     }
 
-                    if (text == "0-") {
+                    if (Component == "0-") {
                         return@TextInputWidget "-0"
                     }
 
-                    val value = text.toIntOrNull()
-                    if (text != "-0" && value == null) {
+                    val value = Component.toIntOrNull()
+                    if (Component != "-0" && value == null) {
                         return@TextInputWidget outArgs[arg.index]?.toString() ?: "0"
                     }
 
-                    if (text != "-0" && text != value.toString()) {
+                    if (Component != "-0" && Component != value.toString()) {
                         return@TextInputWidget value.toString()
                     }
 
@@ -157,7 +170,7 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                 outArgs[arg.index]?.toString() ?: ""
             )
             tooltipText?.let {
-                result.setTooltip(Tooltip.of(it))
+                result.setTooltip(Tooltip.create(it))
             }
             result
         }
@@ -167,17 +180,17 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         ) { prompt, screen, outArgs, arg, tooltipText, onChange ->
             val result = TextInputWidget(
                 prompt,
-                { widget, text ->
-                    if (text.isBlank()) {
+                { widget, Component ->
+                    if (Component.isBlank()) {
                         return@TextInputWidget "0"
                     }
 
-                    val value = text.toUIntOrNull()
+                    val value = Component.toUIntOrNull()
                     if (value == null) {
                         return@TextInputWidget outArgs[arg.index]?.toString() ?: "0"
                     }
 
-                    if (text != value.toString()) {
+                    if (Component != value.toString()) {
                         return@TextInputWidget value.toString()
                     }
 
@@ -188,7 +201,7 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                 outArgs[arg.index]?.toString() ?: ""
             )
             tooltipText?.let {
-                result.setTooltip(Tooltip.of(it))
+                result.setTooltip(Tooltip.create(it))
             }
             result
         }
@@ -196,16 +209,15 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
         TAMClient.registerInputWidget(
             typeOf<Boolean>()
         ) { prompt, screen, outArgs, arg, tooltipText, onChange ->
-            val result = CheckboxWidget(
-                prompt,
-                { checked ->
+            val result = Checkbox.builder(Component.literal(prompt), Minecraft.getInstance().font)
+                .selected(outArgs[arg.index] as? Boolean ?: false)
+                .onValueChange { _, checked ->
                     outArgs[arg.index] = checked
                     onChange()
-                },
-                checked = outArgs[arg.index] as? Boolean ?: false
-            )
+                }
+                .build()
             tooltipText?.let {
-                result.setTooltip(Tooltip.of(it))
+                result.setTooltip(Tooltip.create(it))
             }
             result
         }
@@ -226,7 +238,7 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                             onChange()
                         },
                         getDisplay = {
-                            Text.translatableWithFallback(
+                            Component.translatableWithFallback(
                                 "trueadaptivemusic.enum.$it", it.toString().prettify()).string },
                         title = prompt,
                         startingOption = (outArgs[arg.index] as? Enum<*>),
@@ -251,7 +263,7 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                         onChange()
                     },
                     prompt,
-                    notSelectedPlaceholder = Text.translatableWithFallback(
+                    notSelectedPlaceholder = Component.translatableWithFallback(
                         "trueadaptivemusic.enum_placeholder", "Select values").string,
                     alreadySelected = (outArgs[arg.index] as? List<*>)?.mapNotNull { enum -> enum as? Enum<*> }
                         ?: listOf(),
@@ -304,7 +316,7 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                         onChange()
                     },
                     prompt,
-                    notSelectedPlaceholder = Text.translatableWithFallback(
+                    notSelectedPlaceholder = Component.translatableWithFallback(
                         "trueadaptivemusic.identifier_placeholder", "Select identifiers").string,
                     alreadySelected =
                         (outArgs[arg.index] as? List<*>)?.mapNotNull { it as? TypedIdentifier }
@@ -324,27 +336,26 @@ class TrueAdaptiveMusicClientInitializer: ClientModInitializer {
                 prompt
             ) { outArgs[arg.index] = TrueAdaptiveMusicOptions.LUFBoost(it.toUInt()) }
             tooltipText?.let {
-                result.setTooltip(Tooltip.of(it))
+                result.setTooltip(Tooltip.create(it))
             }
             result
         }
     }
 
-    companion object {
-        private val DYNAMIC_REGISTRY_TEXT =
-            Text.translatableWithFallback(
-                "trueadaptivemusic.dynamic_registry_warning",
-                "No options available to add due to a dynamic registry requirement. Try joining a world first."
-            )
+    private val DYNAMIC_REGISTRY_TEXT =
+        Component.translatableWithFallback(
+            "trueadaptivemusic.dynamic_registry_warning",
+            "No options available to add due to a dynamic registry requirement. Try joining a world first."
+        )
 
-        private fun isEnumList(type: KType): Boolean {
-            return type.isSubtypeOf(typeOf<List<*>>())
-                    && type.arguments.any { typeArg -> typeArg.type?.isSubtypeOf(typeOf<Enum<*>>()) == true }
-        }
+    private fun isEnumList(type: KType): Boolean {
+        return type.isSubtypeOf(typeOf<List<*>>())
+                && type.arguments.any { typeArg -> typeArg.type?.isSubtypeOf(typeOf<Enum<*>>()) == true }
+    }
 
-        private fun isTypedIdentifierList(type: KType): Boolean {
-            return type.isSubtypeOf(typeOf<List<*>>())
-                    && type.arguments.any { typeArg -> typeArg.type?.isSubtypeOf(typeOf<TypedIdentifier>()) == true }
-        }
+    private fun isTypedIdentifierList(type: KType): Boolean {
+        return type.isSubtypeOf(typeOf<List<*>>())
+                && type.arguments.any { typeArg -> typeArg.type?.isSubtypeOf(typeOf<TypedIdentifier>()) == true }
     }
 }
+

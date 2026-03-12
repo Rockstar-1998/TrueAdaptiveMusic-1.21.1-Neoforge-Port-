@@ -1,16 +1,16 @@
 package liltojustice.trueadaptivemusic.client.identifier
 
-import net.minecraft.registry.Registries
-import net.minecraft.util.Identifier
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.ResourceLocation
 
-class EntityTypeIdentifier(id: Identifier): TypedIdentifier(id) {
+class EntityTypeIdentifier(id: ResourceLocation): TypedIdentifier(id) {
     override fun toPrefixedTranslationKey(): String {
-        return id.toTranslationKey("entity")
+        return id.toLanguageKey("entity")
     }
 
     companion object: TypedIdentifierCompanion() {
-        override fun getRegistryIds(): List<Identifier> {
-            return Registries.ENTITY_TYPE.ids.toList()
+        override fun getRegistryIds(): List<ResourceLocation> {
+            return BuiltInRegistries.ENTITY_TYPE.keySet().toList()
         }
     }
 }

@@ -2,7 +2,7 @@ package liltojustice.trueadaptivemusic.client.sound
 
 import liltojustice.trueadaptivemusic.Constants
 import liltojustice.trueadaptivemusic.client.TAMClient
-import net.minecraft.util.JsonHelper
+import net.minecraft.util.GsonHelper
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -37,10 +37,10 @@ object FFmpeg {
 
         ffprobe.waitFor()
 
-        val propertyJson = JsonHelper.deserialize(output.toString())
-        val stream = propertyJson["streams"].asJsonArray[0].asJsonObject
-        val channels = stream["channels"].asInt
-        val sampleRate = stream["sample_rate"].asInt
+        val propertyJson = GsonHelper.parse(output.toString())
+        val stream = propertyJson.getAsJsonArray("streams")[0].asJsonObject
+        val channels = stream.get("channels").asInt
+        val sampleRate = stream.get("sample_rate").asInt
 
         return AudioFormat(sampleRate.toFloat(), 16, channels, true, false)
     }
