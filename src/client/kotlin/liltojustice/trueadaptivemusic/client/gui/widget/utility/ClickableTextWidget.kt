@@ -5,6 +5,7 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.text.Text
+import net.minecraft.text.TextColor
 import net.minecraft.util.Colors
 
 open class ClickableTextWidget(
@@ -12,22 +13,38 @@ open class ClickableTextWidget(
     x: Int = 0,
     y: Int = 0,
     private val showHighlight: Boolean = true,
-    private val onClick: (ClickableTextWidget) -> Unit = {},
+    private val onClick: ((ClickableTextWidget) -> Unit)? = null,
     private val isSelected: (ClickableTextWidget) -> Boolean = { false },
     private val onMouseOn: (ClickableTextWidget) -> Unit = {},
-    private val onMouseOff: (ClickableTextWidget) -> Unit = {})
-    : ClickableWidget(x, y, 0, 0, Text.literal(text)),
-    DataWrapped<ClickableTextWidget> {
-    override var customData: Any? = null
-    private val textRenderer = MinecraftClient.getInstance().textRenderer
+    private val onMouseOff: (ClickableTextWidget) -> Unit = {}
+): ClickableWidget(x, y, 0, 0, Text.literal(text)) {
     var color: Int = Colors.WHITE
     val text: String
         get() = message.string
+    private val textRenderer = MinecraftClient.getInstance().textRenderer
+    private var disableBold = false
+    private var enableItalic = false
+    private val styledText: Text
+        get() = run {
+            var style = message.style.withColor(TextColor.fromRgb(color))
+            if (onClick == null && !disableBold) {
+                style = style.withBold(true)
+            }
+
+            if (enableItalic) {
+                style = style.withItalic(true)
+            }
+
+            val result = message.getWithStyle(style).firstOrNull()
+
+            result ?: Text.literal(text)
+        }
     var hovering = false
 
     init {
-        width = textRenderer.getWidth(message)
+        width = textRenderer.getWidth(styledText)
         height = textRenderer.fontHeight
+        active = onClick != null
     }
 
     override fun renderWidget(context: DrawContext?, mouseX: Int, mouseY: Int, delta: Float) {
@@ -35,17 +52,20 @@ open class ClickableTextWidget(
             return
         }
 
-        if (isMouseOver(mouseX.toDouble(), mouseY.toDouble()) && !hovering) {
+        val isMouseOver = isMouseOver(mouseX.toDouble(), mouseY.toDouble())
+
+        if (isMouseOver && !hovering) {
             hovering = true
             onMouseOn(this)
         }
-        else if (!isMouseOver(mouseX.toDouble(), mouseY.toDouble()) && hovering) {
+        else if (!isMouseOver && hovering) {
             hovering = false
             onMouseOff(this)
         }
 
         val selected = isSelected(this)
         if (selected) {
+            x += BORDER_BUFFER / 2
             context?.drawBorder(
                 x - BORDER_BUFFER / 2,
                 y - BORDER_BUFFER / 2,
@@ -55,12 +75,22 @@ open class ClickableTextWidget(
             )
         }
 
-        if (!selected && showHighlight && isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
+        if (!selected && showHighlight && isMouseOver) {
             context?.drawHorizontalLine(x, x + width, y + textRenderer.fontHeight, Colors.WHITE)
         }
 
-        drawScrollableText(context, textRenderer, message, x, y, x + width, y + height, color)
-        //super.renderWidget(context, mouseX, mouseY, delta)
+        context?.let {
+            drawScrollableText(
+                it,
+                textRenderer,
+                styledText,
+                x,
+                y,
+                x + width,
+                y + textRenderer.fontHeight,
+                Colors.WHITE
+            )
+        }
     }
 
     override fun onClick(mouseX: Double, mouseY: Double) {
@@ -68,16 +98,26 @@ open class ClickableTextWidget(
 
         if (visible && active)
         {
-            onClick(this)
+            onClick?.invoke(this)
         }
     }
 
     override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
     }
 
+    fun disableBold() {
+        disableBold = true
+        this.width = textRenderer.getWidth(styledText)
+    }
+
+    fun enableItalic() {
+        enableItalic = true
+        this.width = textRenderer.getWidth(styledText)
+    }
+
     fun setText(text: String) {
         message = Text.literal(text)
-        this.width = textRenderer.getWidth(message)
+        this.width = textRenderer.getWidth(styledText)
     }
 
     companion object {

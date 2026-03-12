@@ -4,33 +4,37 @@ import com.mojang.serialization.Codec;
 import liltojustice.trueadaptivemusic.client.gui.screen.MainScreen;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.client.option.SimpleOption;
-import net.minecraft.text.Text;
+import fgo.fgo;
+import fim.fim;
+import fik.fik;
+import fgs.fgs;
+import fgr.fgr;
+import wz.wz;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Environment(EnvType.CLIENT)
-public record TrueAdaptiveMusicOptionCallback<T>(MinecraftClient client)
-        implements SimpleOption.Callbacks<T> {
+public record TrueAdaptiveMusicOptionCallback<T>(fgo client)
+        implements fgr.n<T> {
     @Override
-    public Function<SimpleOption<T>, ClickableWidget> getWidgetCreator(
-            SimpleOption.TooltipFactory<T> tooltipFactory,
-            GameOptions gameOptions,
+    public Function<fgr<T>, fik> getWidgetCreator(
+            fgr.l<T> tooltipFactory,
+            fgs gameOptions,
             int x,
             int y,
             int width,
             Consumer<T> changeCallback) {
         return option -> {
             assert client.currentScreen != null;
-            return new ButtonWidget.Builder(Text.literal("True Adaptive Music"),
-                    widget -> client.setScreen(new MainScreen(client.currentScreen)))
-                    .dimensions(x, y, width, 20).build();
+            return new fim.Builder(
+                    wz.translatableWithFallback(
+                            "trueadaptivemusic.trueadaptivemusic",
+                            "True Adaptive Music"
+                    ),
+                    widget -> client.setScreen(new MainScreen(client.currentScreen))
+            ).dimensions(x, y, width, 20).build();
         };
     }
 

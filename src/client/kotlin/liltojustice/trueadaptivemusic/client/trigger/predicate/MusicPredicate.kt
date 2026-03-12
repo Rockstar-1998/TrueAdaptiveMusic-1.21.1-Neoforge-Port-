@@ -1,21 +1,18 @@
 package liltojustice.trueadaptivemusic.client.trigger.predicate
 
-import com.google.gson.Gson
-import com.google.gson.JsonObject
+import liltojustice.trueadaptivemusic.ReflectionHelper
 import liltojustice.trueadaptivemusic.client.TAMClient
+import liltojustice.trueadaptivemusic.text.translatableWithFallbackOrNull
 import liltojustice.trueadaptivemusic.client.trigger.MusicTrigger
-import liltojustice.trueadaptivemusic.client.trigger.event.MusicEvent
-import net.minecraft.client.MinecraftClient
+import liltojustice.trueadaptivemusic.client.trigger.TriggerReflectionHelper
+import liltojustice.trueadaptivemusic.text.StringExtensions.prettify
+import net.minecraft.text.Text
 
-abstract class MusicPredicate: MusicTrigger<MusicPredicate.Parameters>() {
-    init {
-        parameters = Parameters.default()
-    }
-
+abstract class MusicPredicate: MusicTrigger() {
     private var lastResult = false
     private var ticksSinceResult = getFixedTickRate()
 
-    protected abstract fun test(client: MinecraftClient): Boolean
+    protected abstract fun test(): Boolean
 
     final override fun getTypeName(): String {
         return if (this is ErrorPredicate)
@@ -24,17 +21,12 @@ abstract class MusicPredicate: MusicTrigger<MusicPredicate.Parameters>() {
             TAMClient.predicateRegistry[this::class]
     }
 
-    final override fun initParams(json: JsonObject) {
-        parameters = json.get("parameters")
-            ?.let { Gson().fromJson<Parameters>(it, Parameters::class.java) } ?: Parameters()
-    }
-
-    fun testPredicate(client: MinecraftClient): Boolean {
+    fun testPredicate(): Boolean {
         val tickRate = getFixedTickRate()
         if (ticksSinceResult++ == tickRate) {
             ticksSinceResult = 1
 
-            lastResult = test(client)
+            lastResult = test()
         }
 
         return lastResult
@@ -49,18 +41,36 @@ abstract class MusicPredicate: MusicTrigger<MusicPredicate.Parameters>() {
         return if (desiredTickRate < 1) 0 else desiredTickRate
     }
 
-    companion object: MusicPredicateCompanion<MusicPredicate> {
+
+    companion object: MusicPredicateCompanion {
     }
 
-    data class Parameters(var trackDelay: UInt = 0U, var trackDelayNoise: UInt = 0U): MusicTrigger.Parameters() {
-        companion object: ParametersCompanion<MusicEvent.Parameters> {
-            override fun default(): Parameters {
-                return Parameters()
-            }
+    interface MusicPredicateCompanion: MusicTriggerCompanion {
+        override fun getDisplayName(triggerName: String): Text {
+            return Text.translatableWithFallback(
+                "trueadaptivemusic.predicate.name.${triggerName}",
+                displayName ?: triggerName.prettify()
+            )
         }
-    }
 
-    interface MusicPredicateCompanion<TSelf>: MusicTriggerCompanion<MusicPredicate>
-            where TSelf: MusicPredicate {
+        override fun getArgDisplayName(triggerName: String, argName: String): Text? {
+            val predicateType = TAMClient.predicateRegistry[triggerName]
+            val inferredDisplayNames = ReflectionHelper.getConstructorParameterNames(predicateType)
+            val combined = inferredDisplayNames.associateWith { it.prettify() } +
+                TriggerReflectionHelper.getMusicTriggerArgDisplayNames(predicateType)
+
+            return translatableWithFallbackOrNull(
+                "trueadaptivemusic.predicate.arg.${triggerName}.${argName}.display",
+                combined[argName]
+            )
+        }
+
+        override fun getArgDescription(triggerName: String, argName: String): Text? {
+            return translatableWithFallbackOrNull(
+                "trueadaptivemusic.predicate.arg.${triggerName}.${argName}.description",
+                TriggerReflectionHelper.getMusicTriggerArgDescriptions(
+                    TAMClient.predicateRegistry[triggerName])[argName]
+            )
+        }
     }
 }

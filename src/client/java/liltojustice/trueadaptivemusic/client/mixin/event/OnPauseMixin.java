@@ -1,0 +1,21 @@
+package liltojustice.trueadaptivemusic.client.mixin.event;
+
+import liltojustice.trueadaptivemusic.client.TAMClient;
+import liltojustice.trueadaptivemusic.client.trigger.event.types.OnPauseEvent;
+import fgo.fgo;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(fgo.class)
+public class OnPauseMixin {
+    @Inject(
+            method = "openGameMenu",
+            at = @At("HEAD"))
+    public void openGameMenu(boolean pauseOnly, CallbackInfo ci) {
+        if (fgo.getInstance().currentScreen == null) {
+            TAMClient.INSTANCE.invokeMusicEvent(OnPauseEvent.class);
+        }
+    }
+}

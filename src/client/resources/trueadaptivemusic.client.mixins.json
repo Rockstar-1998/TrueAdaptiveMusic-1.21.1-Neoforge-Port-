@@ -6,13 +6,15 @@
   "client": [
     "DebugHudMixin",
     "GameOptionsScreenMixin",
-    "SoundManagerPauseAllMixin",
-    "SoundManagerPlayMixin",
+    "SoundEngineMixin",
+    "SoundManagerMixin",
+    "SoundSystemMixin",
     "event.OnBossDefeatEventMixin",
     "event.OnDayStartEventMixin",
     "event.OnDeathEventMixin",
     "event.OnJoinWorldEventMixin",
     "event.OnNightStartMixin",
+    "event.OnPauseMixin",
     "event.OnToastMixin",
     "event.OnWakeUpEventMixin"
   ],
