@@ -1,5 +1,4 @@
-Copyright (c) 2024 LilTOJustice
-NeoForge 1.21.1 Port (c) 2026 Yuqiu
+Copyright (c) 2024 
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

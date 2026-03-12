@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.0.20"
-    kotlin("plugin.serialization") version "2.0.20"
-    id("net.neoforged.moddev") version "2.0.42-beta"
+    kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
+    id("net.neoforged.moddev") version "2.0.126"
     id("maven-publish")
 }
 
-version = "${project.property("mod_version")}+${project.property("minecraft_version")}"
-group = project.property("maven_group") as String
+version = "${project.property("mod_version") as String}+${project.property("minecraft_version")}"
+group = project.property("mod_group_id") as String
 
 base {
     archivesName.set(project.property("archives_base_name") as String)
@@ -21,56 +21,78 @@ java {
     withSourcesJar()
 }
 
-// NeoForge configuration
+val client by sourceSets.creating {
+    compileClasspath += sourceSets["main"].output + sourceSets["main"].compileClasspath
+    runtimeClasspath += sourceSets["main"].output + sourceSets["main"].runtimeClasspath
+}
+
+configurations {
+    val clientImplementation by getting {
+        extendsFrom(implementation.get())
+    }
+    val clientCompileOnly by getting {
+        extendsFrom(compileOnly.get())
+    }
+    val clientRuntimeOnly by getting {
+        extendsFrom(runtimeOnly.get())
+    }
+}
+
 neoForge {
-    version = project.property("neoforge_version") as String
-    
-    // Access Transformer
-    accessTransformers.from(file("src/main/resources/META-INF/accesstransformer.cfg"))
-    
+    version = project.property("neo_version") as String
+
     runs {
-        register("client") {
+        create("client") {
             client()
         }
-        register("server") {
-            server()
-        }
     }
-    
+
     mods {
-        register("trueadaptivemusic") {
-            sourceSet(sourceSets.main.get())
+        create(project.property("mod_id") as String) {
+            sourceSet(sourceSets["main"])
+            sourceSet(client)
         }
     }
 }
 
 repositories {
-    mavenCentral()
-    
-    // Kotlin for Forge
-    maven("https://thedarkcolour.github.io/KotlinForForge/")
+    maven("https://maven.neoforged.net/releases")
+    maven {
+        name = "Kotlin for Forge"
+        setUrl("https://thedarkcolour.github.io/KotlinForForge/")
+    }
 }
 
 dependencies {
-    // Kotlin for Forge
-    implementation("thedarkcolour:kotlinforforge-neoforge:${project.property("kotlin_forge_version")}")
-    
-    // Kotlinx Serialization
+    implementation("thedarkcolour:kotlinforforge-neoforge:${project.property("kotlinforforge_version")}")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${project.property("serialization_version")}")
 }
 
 tasks.processResources {
     inputs.property("version", project.version)
     inputs.property("minecraft_version", project.property("minecraft_version"))
-    inputs.property("neoforge_version", project.property("neoforge_version"))
+    inputs.property("minecraft_version_range", project.property("minecraft_version_range"))
+    inputs.property("neo_version_range", project.property("neo_version_range"))
+    inputs.property("loader_version_range", project.property("loader_version_range"))
+    inputs.property("mod_id", project.property("mod_id"))
+    inputs.property("mod_name", project.property("mod_name"))
+    inputs.property("mod_license", project.property("mod_license"))
+    inputs.property("mod_authors", project.property("mod_authors"))
+    inputs.property("mod_description", project.property("mod_description"))
     filteringCharset = "UTF-8"
 
     filesMatching("META-INF/neoforge.mods.toml") {
         expand(
             "version" to project.version,
             "minecraft_version" to project.property("minecraft_version"),
-            "neoforge_version" to project.property("neoforge_version"),
-            "kotlin_forge_version" to project.property("kotlin_forge_version")
+            "minecraft_version_range" to project.property("minecraft_version_range"),
+            "neo_version_range" to project.property("neo_version_range"),
+            "loader_version_range" to project.property("loader_version_range"),
+            "mod_id" to project.property("mod_id"),
+            "mod_name" to project.property("mod_name"),
+            "mod_license" to project.property("mod_license"),
+            "mod_authors" to project.property("mod_authors"),
+            "mod_description" to project.property("mod_description")
         )
     }
 }
@@ -85,21 +107,23 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.jar {
+    dependsOn("clientClasses")
+    from(client.output)
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName}" }
     }
 }
 
-// Maven publication
+tasks.named<Jar>("sourcesJar") {
+    from(client.allSource)
+}
+
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             artifactId = project.property("archives_base_name") as String
             from(components["java"])
         }
-    }
-
-    repositories {
-        // Add repositories to publish to here.
     }
 }

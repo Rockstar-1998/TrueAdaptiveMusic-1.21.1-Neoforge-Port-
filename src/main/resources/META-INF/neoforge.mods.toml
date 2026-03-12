@@ -1,38 +1,37 @@
-modLoader = "kotlinforforge"
-loaderVersion = "[5,)"
-
-license = "GPL-3.0"
-issueTrackerURL = "https://github.com/LilTOJustice/TrueAdaptiveMusic/issues"
+modLoader="kotlinforforge"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/LilTOJustice/TrueAdaptiveMusic/issues"
 
 [[mods]]
-modId = "trueadaptivemusic"
-version = "${version}"
-displayName = "True Adaptive Music"
-description = '''Experience dynamic music that adapts to what happens in Minecraft!'''
-logoFile = "assets/trueadaptivemusic/icon.png"
-authors = "LilTOJustice, Yuqiu (NeoForge Port)"
-displayURL = "https://liltojustice.github.io/TrueAdaptiveMusic/"
-
-[[dependencies.trueadaptivemusic]]
-modId = "neoforge"
-type = "required"
-versionRange = "[21.1,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies.trueadaptivemusic]]
-modId = "minecraft"
-type = "required"
-versionRange = "[1.21.1,1.22)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies.trueadaptivemusic]]
-modId = "kotlinforforge"
-type = "required"
-versionRange = "[5.0.0,)"
-ordering = "NONE"
-side = "BOTH"
+modId="${mod_id}"
+version="${version}"
+displayName="${mod_name}"
+displayURL="https://liltojustice.github.io/TrueAdaptiveMusic/"
+logoFile="assets/trueadaptivemusic/icon.png"
+authors="${mod_authors}"
+description='''${mod_description}'''
 
 [[mixins]]
-config = "trueadaptivemusic.mixins.json"
+config="trueadaptivemusic.client.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="kotlinforforge"
+type="required"
+versionRange="${loader_version_range}"
+ordering="NONE"
+side="CLIENT"

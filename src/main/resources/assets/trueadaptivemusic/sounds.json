@@ -1,8 +1,9 @@
 {
-  "audiofilestream": {
+  "audiofilestream":
+  {
     "sounds": [
       {
-        "name": "trueadaptivemusic:empty",
+        "name": "fabric-sound-api-v1:empty",
         "stream": true
       }
     ]
