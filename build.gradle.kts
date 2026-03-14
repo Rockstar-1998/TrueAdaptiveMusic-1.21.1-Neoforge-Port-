@@ -26,6 +26,25 @@ val client by sourceSets.creating {
     runtimeClasspath += sourceSets["main"].output + sourceSets["main"].runtimeClasspath
 }
 
+sourceSets {
+    named("main") {
+        java {
+            exclude("liltojustice/trueadaptivemusic/client/**")
+            exclude("trueadaptivemusic/client/**")
+        }
+        allSource.exclude("liltojustice/trueadaptivemusic/client/**")
+        allSource.exclude("trueadaptivemusic/client/**")
+    }
+}
+
+kotlin {
+    sourceSets {
+        named("main") {
+            kotlin.exclude("liltojustice/trueadaptivemusic/client/**")
+        }
+    }
+}
+
 configurations {
     val clientImplementation by getting {
         extendsFrom(implementation.get())

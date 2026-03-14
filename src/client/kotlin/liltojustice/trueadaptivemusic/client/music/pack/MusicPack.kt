@@ -345,11 +345,11 @@ class MusicPack private constructor(
             val optionsFile = files.find { file -> file.fileName.name == Constants.PACK_OPTIONS_FILENAME }
 
             if (metaFile != null) {
-                meta = MusicPackMeta.jsonDecode(metaFile.inputStream().reader().readText())
+                meta = MusicPackMeta.jsonDecode(metaFile.inputStream().reader(Charsets.UTF_8).readText())
             }
 
             if (optionsFile != null) {
-                options = MusicPackOptions.jsonDecode(optionsFile.inputStream().reader().readText())
+                options = MusicPackOptions.jsonDecode(optionsFile.inputStream().reader(Charsets.UTF_8).readText())
             }
 
             if (rulesFile == null) {
@@ -362,7 +362,7 @@ class MusicPack private constructor(
 
             val rules = try {
                 MusicTree.fromJson(
-                    GsonHelper.parse(rulesFile.inputStream().reader()), playableSounds)
+                    GsonHelper.parse(rulesFile.inputStream().reader(Charsets.UTF_8)), playableSounds)
             }
             catch (e: JsonParseException) {
                 preValidation.addError("$jsonErrorText\n$e")
@@ -394,13 +394,13 @@ class MusicPack private constructor(
 
                 if (metaFile != null) {
                     zipFile.getInputStream(metaFile).use {
-                        meta = MusicPackMeta.jsonDecode(it.reader().readText())
+                        meta = MusicPackMeta.jsonDecode(it.reader(Charsets.UTF_8).readText())
                     }
                 }
 
                 if (optionsFile != null) {
                     zipFile.getInputStream(optionsFile).use {
-                        options = MusicPackOptions.jsonDecode(it.reader().readText())
+                        options = MusicPackOptions.jsonDecode(it.reader(Charsets.UTF_8).readText())
                     }
                 }
 
@@ -415,7 +415,7 @@ class MusicPack private constructor(
                 val rules = try {
                     zipFile.getInputStream(rulesFile).use {
                         MusicTree.fromJson(
-                            GsonHelper.parse(it.reader()) , playableSounds)
+                            GsonHelper.parse(it.reader(Charsets.UTF_8)) , playableSounds)
                     }
                 }
                 catch (e: JsonParseException) {

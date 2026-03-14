@@ -75,8 +75,8 @@ class MusicManager(private val client: Minecraft) {
 
         val identifier = treeResult.path
         val parameters = treeResult.parameters
-        val musicToPlay = treeResult.accumulatedMusic
-        val ambienceToPlay = treeResult.accumulatedAmbience
+        val musicToPlay = sanitizeSounds(treeResult.accumulatedMusic)
+        val ambienceToPlay = sanitizeSounds(treeResult.accumulatedAmbience)
         val trackDelayNoise = parameters.trackDelayNoise
         val trackDelay = parameters.trackDelay
         val enterDelay = parameters.enterDelay
@@ -85,6 +85,7 @@ class MusicManager(private val client: Minecraft) {
         val shouldResume = oldMusicPredicateId == identifier && enterDelay == 0U
         val isEnter = currentMusicPredicateId != identifier
         val persistentNodeMusic = packOptions.persistentNodeMusic && !loopMusic
+        val currentIsLooping = musicPlayer.getPlayingInstance(mainTrack)?.isLooping() == true
 
         eventPool = treeResult.accumulatedEvents
 
@@ -136,7 +137,7 @@ class MusicManager(private val client: Minecraft) {
             musicPlayer.stop(ambienceTrack)
         }
 
-        if (!ambienceToPlay.isEmpty() &&
+        if (ambienceToPlay.isNotEmpty() &&
             client.player != null &&
             (!isAmbiencePlaying || !ambienceToPlay.contains(lastAmbience) || isAmbienceAlmostDone)) {
             val newAmbience = getPseudoRandomTrack(ambienceToPlay, lastAmbience)
@@ -168,7 +169,7 @@ class MusicManager(private val client: Minecraft) {
 
         updatePredicateId(identifier)
 
-        if (shouldKeepPlaying(musicToPlay, enterDelay, isEnter, persistentNodeMusic)) {
+        if (shouldKeepPlaying(musicToPlay, enterDelay, isEnter, persistentNodeMusic, currentIsLooping)) {
             return
         }
 
@@ -192,11 +193,16 @@ class MusicManager(private val client: Minecraft) {
     }
 
     private fun shouldKeepPlaying(
-        musicToPlay: List<PlayableSound>, enterDelay: UInt, isEnter: Boolean, persistentNodeMusic: Boolean): Boolean {
+        musicToPlay: List<PlayableSound>,
+        enterDelay: UInt,
+        isEnter: Boolean,
+        persistentNodeMusic: Boolean,
+        currentIsLooping: Boolean
+    ): Boolean {
         val mainTrackPlaying = musicPlayer.isTrackPlaying(mainTrack)
         return mainTrackPlaying && (
                 (musicToPlay.contains(lastMusic) && enterDelay != 0U)
-                        || (persistentNodeMusic && isEnter)
+                        || (persistentNodeMusic && isEnter && !currentIsLooping)
                 )
     }
 
@@ -317,12 +323,18 @@ class MusicManager(private val client: Minecraft) {
             return false
         }
 
-        private fun getPseudoRandomTrack(musicToPlay: List<PlayableSound>, lastMusic: PlayableSound?): PlayableSound {
-            if (musicToPlay.size == 1) {
-                return musicToPlay.first()
-            }
-
-            return (lastMusic?.let { musicToPlay.filterNot { it == lastMusic } } ?: musicToPlay).random()
+    private fun getPseudoRandomTrack(musicToPlay: List<PlayableSound>, lastMusic: PlayableSound?): PlayableSound {
+        if (musicToPlay.size == 1) {
+            return musicToPlay.first()
         }
+
+        return (lastMusic?.let { musicToPlay.filterNot { it == lastMusic } } ?: musicToPlay).random()
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun sanitizeSounds(sounds: List<PlayableSound>): List<PlayableSound> {
+        // Gson can inject nulls into Kotlin lists via reflection; filter them out defensively.
+        return (sounds as? List<PlayableSound?>)?.filterNotNull() ?: sounds
+    }
+}
 }

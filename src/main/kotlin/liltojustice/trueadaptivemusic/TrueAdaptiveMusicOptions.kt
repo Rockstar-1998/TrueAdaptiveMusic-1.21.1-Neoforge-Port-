@@ -12,7 +12,7 @@ data class TrueAdaptiveMusicOptions(
     val useDebugHud: Boolean = false) {
 
     fun save() {
-        Path(Constants.OPTIONS_FILENAME).toFile().writeText(jsonEncode())
+        Constants.OPTIONS_PATH.toFile().writeText(jsonEncode())
     }
 
     fun getArgs(): List<Any?> {
